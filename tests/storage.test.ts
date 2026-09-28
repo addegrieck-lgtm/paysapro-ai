@@ -120,3 +120,37 @@ describe('export / import', () => {
     expect(await db.getClients()).toHaveLength(0);
   });
 });
+
+describe('mise à niveau de la base', () => {
+  it('une ancienne version ouverte ailleurs produit un message clair, pas un chargement infini', async () => {
+    const { openDB } = await import('idb');
+    const { StorageBlockedError } = await import('../src/services/storage/IndexedDBProvider');
+    const name = `blocked-${++n}`;
+    // ancienne version (v1) restée ouverte, sans gestion de « versionchange »
+    const old = await openDB(name, 1, { upgrade: (db) => db.createObjectStore('settings') });
+    const next = new IndexedDBProvider(name);
+    await expect(next.getSettings()).rejects.toBeInstanceOf(StorageBlockedError);
+    old.close();
+  });
+
+  it('une base v1 du MVP est mise à niveau sans perte', async () => {
+    const { openDB } = await import('idb');
+    const name = `upgrade-${++n}`;
+    const old = await openDB(name, 1, {
+      upgrade: (db) => {
+        db.createObjectStore('settings');
+        db.createObjectStore('clients', { keyPath: 'id' });
+        db.createObjectStore('projects', { keyPath: 'id' });
+        db.createObjectStore('quotes', { keyPath: 'id' });
+        db.createObjectStore('catalog', { keyPath: 'id' });
+        db.createObjectStore('photos', { keyPath: 'id' }).createIndex('projectId', 'projectId');
+        db.createObjectStore('activity', { keyPath: 'id' });
+      },
+    });
+    await old.put('clients', client('ancien'));
+    old.close();
+    const next = new IndexedDBProvider(name);
+    expect((await next.getClients()).map((c) => c.id)).toEqual(['ancien']);
+    expect(await next.getTemplates()).toEqual([]);
+  });
+});

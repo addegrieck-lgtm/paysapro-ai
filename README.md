@@ -236,7 +236,7 @@ Les écrans sont chargés à la demande (bundle initial d’environ 100 Ko gzip)
 
 ## 9. Tests
 
-`npm test` lance 81 tests :
+`npm test` lance 83 tests :
 
 - **Calculs** : surfaces, volumes, pertes, prix de vente et coût, marge, TVA, TTC, acompte, numérotation.
 - **Stockage** : IndexedDB, export/import aller-retour avec photos, suppression.

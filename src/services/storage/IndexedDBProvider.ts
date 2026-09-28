@@ -42,6 +42,14 @@ interface PaysaproDB extends DBSchema {
 const BUSINESS_STORES = ['settings', 'user', 'clients', 'projects', 'quotes', 'catalog', 'templates', 'photos', 'activity'] as const;
 const SINGLETON = 'app';
 
+/** Levée quand une autre fenêtre (ancienne version) empêche la mise à niveau de la base. */
+export class StorageBlockedError extends Error {
+  constructor() {
+    super('Paysapro AI est ouvert dans un autre onglet ou une autre fenêtre avec une ancienne version. Fermez-les puis réessayez.');
+    this.name = 'StorageBlockedError';
+  }
+}
+
 function toMeta(p: PhotoRecord): PhotoMeta {
   return { id: p.id, projectId: p.projectId, tag: p.tag, caption: p.caption, width: p.width, height: p.height, createdAt: p.createdAt };
 }
@@ -51,7 +59,17 @@ export class IndexedDBProvider implements StorageProvider {
   private dbPromise: Promise<IDBPDatabase<PaysaproDB>>;
 
   constructor(dbName = 'paysapro-ai') {
-    this.dbPromise = openDB<PaysaproDB>(dbName, 2, {
+    let rejectBlocked: (e: Error) => void = () => undefined;
+    const blocked = new Promise<never>((_, reject) => (rejectBlocked = reject));
+    const opening = openDB<PaysaproDB>(dbName, 2, {
+      // Une ancienne version ouverte ailleurs empêche la mise à niveau : on le signale au lieu d'attendre sans fin.
+      blocked() {
+        rejectBlocked(new StorageBlockedError());
+      },
+      // Une version plus récente demande la base : on la libère pour ne jamais la bloquer.
+      blocking() {
+        void opening.then((db) => db.close());
+      },
       upgrade(db, oldVersion) {
         if (oldVersion < 1) {
           db.createObjectStore('settings');
@@ -73,6 +91,9 @@ export class IndexedDBProvider implements StorageProvider {
         }
       },
     });
+    this.dbPromise = Promise.race([opening, blocked]);
+    // évite une « unhandled rejection » si personne n'a encore demandé la base
+    this.dbPromise.catch(() => undefined);
   }
 
   private db() {

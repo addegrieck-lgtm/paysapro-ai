@@ -132,10 +132,12 @@ export async function loadAll(): Promise<void> {
     setState({ ready: true, loadError: null, demo: isDemoSpace(), user, settings, clients, projects, quotes, catalog, templates, photos, activity });
   } catch (e) {
     console.error(e);
+    const blocked = e instanceof Error && e.name === 'StorageBlockedError';
     setState({
       ready: true,
-      loadError:
-        "Impossible d'accéder au stockage local. Vérifiez que la navigation privée est désactivée, puis rechargez la page.",
+      loadError: blocked
+        ? e.message
+        : "Impossible d'accéder au stockage local. Vérifiez que la navigation privée est désactivée, puis rechargez la page.",
     });
   }
 }

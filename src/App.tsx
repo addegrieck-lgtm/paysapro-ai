@@ -72,7 +72,12 @@ function Splash({ message }: { message?: string }) {
     <div className="flex min-h-dvh flex-col items-center justify-center gap-5 p-6 text-center" aria-busy={!message}>
       <LogoMark className="h-14 w-14" />
       {message ? (
-        <p className="max-w-sm text-muted">{message}</p>
+        <>
+          <p className="max-w-sm text-muted">{message}</p>
+          <button type="button" onClick={() => window.location.reload()} className="min-h-12 rounded-xl bg-brand px-5 font-semibold text-on-brand">
+            Réessayer
+          </button>
+        </>
       ) : (
         <div className="w-56 space-y-2" aria-label="Chargement">
           <Skeleton className="h-3" />
