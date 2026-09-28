@@ -3,6 +3,9 @@ import { getState, persist, setState, upsert, without } from '../../lib/store';
 import { storage } from '../../services/storage';
 import { uid } from '../../utils/id';
 import { deleteProject } from '../projects/actions';
+import { logActivity } from '../activity';
+import { analytics } from '../../services/analytics/AnalyticsProvider';
+import { clientDisplayName } from './format';
 
 export type ClientInput = Omit<Client, 'id' | 'createdAt' | 'updatedAt'>;
 
@@ -27,6 +30,8 @@ export function createClient(input: ClientInput): Client {
   const client: Client = { ...input, id: uid(), createdAt: now, updatedAt: now };
   setState({ clients: upsert(getState().clients, client) });
   void persist(() => storage.saveClient(client));
+  logActivity(`Nouveau client : ${clientDisplayName(client)}.`, null, { kind: 'new_client', notify: true });
+  analytics.track('client_created');
   return client;
 }
 

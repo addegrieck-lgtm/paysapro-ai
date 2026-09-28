@@ -37,7 +37,15 @@ export function QuotesPage() {
 
   return (
     <div>
-      <PageHeader title="Devis" subtitle={drafts > 0 ? `${drafts} devis en préparation dans vos chantiers` : undefined} />
+      <PageHeader
+        title="Devis"
+        subtitle={drafts > 0 ? `${drafts} devis en préparation dans vos chantiers` : undefined}
+        actions={
+          <ButtonLink to="/quotes/new" size="sm">
+            + Nouveau devis
+          </ButtonLink>
+        }
+      />
       <div className="-mx-4 mb-4 flex gap-2 overflow-x-auto px-4 pb-1" role="tablist" aria-label="Filtrer les devis">
         {(
           [

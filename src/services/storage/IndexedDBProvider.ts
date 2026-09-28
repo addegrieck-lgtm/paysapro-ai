@@ -3,16 +3,22 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type {
   ActivityEvent,
+  AnalyticsEvent,
   AppSettings,
+  BetaLead,
   CatalogItem,
   Client,
+  ContactMessage,
   ExportFile,
+  FeedbackEntry,
   PhotoMeta,
   PhotoRecord,
   Project,
   Quote,
+  QuoteTemplate,
+  User,
 } from '../../types';
-import type { StorageProvider } from './StorageProvider';
+import type { ProductRecords, StorageProvider } from './StorageProvider';
 import { blobToDataUrl, dataUrlToBlob } from './exportFormat';
 
 interface PaysaproDB extends DBSchema {
@@ -23,21 +29,21 @@ interface PaysaproDB extends DBSchema {
   catalog: { key: string; value: CatalogItem };
   photos: { key: string; value: PhotoRecord; indexes: { projectId: string } };
   activity: { key: string; value: ActivityEvent };
+  // v2
+  user: { key: string; value: User };
+  templates: { key: string; value: QuoteTemplate };
+  leads: { key: string; value: BetaLead };
+  messages: { key: string; value: ContactMessage };
+  feedback: { key: string; value: FeedbackEntry };
+  analytics: { key: string; value: AnalyticsEvent };
 }
 
-const STORES = ['settings', 'clients', 'projects', 'quotes', 'catalog', 'photos', 'activity'] as const;
-const SETTINGS_KEY = 'app';
+/** Données métier (exportées, importées, effacées par « Supprimer toutes mes données ») */
+const BUSINESS_STORES = ['settings', 'user', 'clients', 'projects', 'quotes', 'catalog', 'templates', 'photos', 'activity'] as const;
+const SINGLETON = 'app';
 
 function toMeta(p: PhotoRecord): PhotoMeta {
-  return {
-    id: p.id,
-    projectId: p.projectId,
-    tag: p.tag,
-    caption: p.caption,
-    width: p.width,
-    height: p.height,
-    createdAt: p.createdAt,
-  };
+  return { id: p.id, projectId: p.projectId, tag: p.tag, caption: p.caption, width: p.width, height: p.height, createdAt: p.createdAt };
 }
 
 export class IndexedDBProvider implements StorageProvider {
@@ -45,16 +51,26 @@ export class IndexedDBProvider implements StorageProvider {
   private dbPromise: Promise<IDBPDatabase<PaysaproDB>>;
 
   constructor(dbName = 'paysapro-ai') {
-    this.dbPromise = openDB<PaysaproDB>(dbName, 1, {
-      upgrade(db) {
-        db.createObjectStore('settings');
-        db.createObjectStore('clients', { keyPath: 'id' });
-        db.createObjectStore('projects', { keyPath: 'id' });
-        db.createObjectStore('quotes', { keyPath: 'id' });
-        db.createObjectStore('catalog', { keyPath: 'id' });
-        const photos = db.createObjectStore('photos', { keyPath: 'id' });
-        photos.createIndex('projectId', 'projectId');
-        db.createObjectStore('activity', { keyPath: 'id' });
+    this.dbPromise = openDB<PaysaproDB>(dbName, 2, {
+      upgrade(db, oldVersion) {
+        if (oldVersion < 1) {
+          db.createObjectStore('settings');
+          db.createObjectStore('clients', { keyPath: 'id' });
+          db.createObjectStore('projects', { keyPath: 'id' });
+          db.createObjectStore('quotes', { keyPath: 'id' });
+          db.createObjectStore('catalog', { keyPath: 'id' });
+          const photos = db.createObjectStore('photos', { keyPath: 'id' });
+          photos.createIndex('projectId', 'projectId');
+          db.createObjectStore('activity', { keyPath: 'id' });
+        }
+        if (oldVersion < 2) {
+          db.createObjectStore('user');
+          db.createObjectStore('templates', { keyPath: 'id' });
+          db.createObjectStore('leads', { keyPath: 'id' });
+          db.createObjectStore('messages', { keyPath: 'id' });
+          db.createObjectStore('feedback', { keyPath: 'id' });
+          db.createObjectStore('analytics', { keyPath: 'id' });
+        }
       },
     });
   }
@@ -63,11 +79,18 @@ export class IndexedDBProvider implements StorageProvider {
     return this.dbPromise;
   }
 
+  async getUser() {
+    return (await (await this.db()).get('user', SINGLETON)) ?? null;
+  }
+  async saveUser(user: User) {
+    await (await this.db()).put('user', user, SINGLETON);
+  }
+
   async getSettings() {
-    return (await (await this.db()).get('settings', SETTINGS_KEY)) ?? null;
+    return (await (await this.db()).get('settings', SINGLETON)) ?? null;
   }
   async saveSettings(settings: AppSettings) {
-    await (await this.db()).put('settings', settings, SETTINGS_KEY);
+    await (await this.db()).put('settings', settings, SINGLETON);
   }
 
   async getClients() {
@@ -123,6 +146,16 @@ export class IndexedDBProvider implements StorageProvider {
     await (await this.db()).delete('catalog', id);
   }
 
+  async getTemplates() {
+    return (await this.db()).getAll('templates');
+  }
+  async saveTemplate(template: QuoteTemplate) {
+    await (await this.db()).put('templates', template);
+  }
+  async deleteTemplate(id: string) {
+    await (await this.db()).delete('templates', id);
+  }
+
   async getPhotoMetas() {
     const db = await this.db();
     const metas: PhotoMeta[] = [];
@@ -150,6 +183,17 @@ export class IndexedDBProvider implements StorageProvider {
     await (await this.db()).put('activity', event);
   }
 
+  async addRecord<K extends keyof ProductRecords>(store: K, value: ProductRecords[K]) {
+    // Les 4 magasins ont la même forme (clé « id ») : le typage générique d'idb ne sait pas l'exprimer.
+    await (await this.db()).put(store as 'leads', value as BetaLead);
+  }
+  async getRecords<K extends keyof ProductRecords>(store: K): Promise<ProductRecords[K][]> {
+    return (await (await this.db()).getAll(store as 'leads')) as unknown as ProductRecords[K][];
+  }
+  async clearRecords(store: keyof ProductRecords) {
+    await (await this.db()).clear(store);
+  }
+
   async exportAll(): Promise<ExportFile> {
     const db = await this.db();
     const photos = await db.getAll('photos');
@@ -158,17 +202,15 @@ export class IndexedDBProvider implements StorageProvider {
       version: 1,
       exportedAt: new Date().toISOString(),
       settings: await this.getSettings(),
+      user: await this.getUser(),
       clients: await db.getAll('clients'),
       projects: await db.getAll('projects'),
       quotes: await db.getAll('quotes'),
       catalog: await db.getAll('catalog'),
+      templates: await db.getAll('templates'),
       activity: await db.getAll('activity'),
       photos: await Promise.all(
-        photos.map(async (p) => ({
-          ...toMeta(p),
-          thumbDataUrl: await blobToDataUrl(p.thumb),
-          mediumDataUrl: await blobToDataUrl(p.medium),
-        })),
+        photos.map(async (p) => ({ ...toMeta(p), thumbDataUrl: await blobToDataUrl(p.thumb), mediumDataUrl: await blobToDataUrl(p.medium) })),
       ),
     };
   }
@@ -181,14 +223,16 @@ export class IndexedDBProvider implements StorageProvider {
       medium: dataUrlToBlob(mediumDataUrl),
     }));
     const db = await this.db();
-    const tx = db.transaction(STORES, 'readwrite');
-    await Promise.all(STORES.map((s) => tx.objectStore(s).clear()));
+    const tx = db.transaction(BUSINESS_STORES, 'readwrite');
+    await Promise.all(BUSINESS_STORES.map((s) => tx.objectStore(s).clear()));
     const ops: Promise<unknown>[] = [];
-    if (data.settings) ops.push(tx.objectStore('settings').put(data.settings, SETTINGS_KEY));
+    if (data.settings) ops.push(tx.objectStore('settings').put(data.settings, SINGLETON));
+    if (data.user) ops.push(tx.objectStore('user').put(data.user, SINGLETON));
     data.clients.forEach((c) => ops.push(tx.objectStore('clients').put(c)));
     data.projects.forEach((p) => ops.push(tx.objectStore('projects').put(p)));
     data.quotes.forEach((q) => ops.push(tx.objectStore('quotes').put(q)));
     data.catalog.forEach((c) => ops.push(tx.objectStore('catalog').put(c)));
+    (data.templates ?? []).forEach((t) => ops.push(tx.objectStore('templates').put(t)));
     data.activity.forEach((a) => ops.push(tx.objectStore('activity').put(a)));
     photos.forEach((p) => ops.push(tx.objectStore('photos').put(p)));
     await Promise.all(ops);
@@ -197,8 +241,9 @@ export class IndexedDBProvider implements StorageProvider {
 
   async clearAll() {
     const db = await this.db();
-    const tx = db.transaction(STORES, 'readwrite');
-    await Promise.all(STORES.map((s) => tx.objectStore(s).clear()));
+    const stores = [...BUSINESS_STORES, 'leads', 'messages', 'feedback', 'analytics'] as const;
+    const tx = db.transaction(stores, 'readwrite');
+    await Promise.all(stores.map((s) => tx.objectStore(s).clear()));
     await tx.done;
   }
 }

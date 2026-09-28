@@ -90,7 +90,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
           ref={canvasRef}
           aria-label="Zone de signature : dessinez votre signature avec le doigt"
           role="img"
-          className="block h-48 w-full touch-none cursor-crosshair"
+          className="block h-60 w-full touch-none cursor-crosshair sm:h-56"
           onPointerDown={down}
           onPointerMove={move}
           onPointerUp={up}
@@ -99,13 +99,13 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
         />
         {empty && (
           <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-neutral-400">
-            Signez ici avec le doigt
+            Signez ici avec le doigt ✍️
           </span>
         )}
         <div className="pointer-events-none absolute inset-x-6 bottom-8 border-b border-neutral-300" />
       </div>
       <div className="mt-2 flex justify-end">
-        <Button variant="ghost" size="sm" onClick={clear} disabled={empty} icon={<RotateCcw className="h-4 w-4" />}>
+        <Button variant="secondary" size="sm" onClick={clear} disabled={empty} icon={<RotateCcw className="h-4 w-4" />}>
           Effacer et recommencer
         </Button>
       </div>

@@ -1,10 +1,14 @@
-// Export / import / suppression des données et données de démonstration.
+// Export / import / suppression des données, onboarding et espace de démonstration.
+import type { Activity, CompanySettings, Goal } from '../../types';
 import { getState, loadAll, persist, setState } from '../../lib/store';
-import { storage } from '../../services/storage';
+import { isDemoSpace, setDemoSpace, storage } from '../../services/storage';
 import { parseExportFile } from '../../services/storage/exportFormat';
-import { buildDemoData } from '../demo/demoData';
-import { deleteClient } from '../clients/actions';
-import { logActivity } from '../activity';
+import { auth } from '../../services/auth/AuthProvider';
+import { analytics } from '../../services/analytics/AnalyticsProvider';
+import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings } from '../migrations';
+import { builtInTemplates, defaultCatalog } from '../../data/defaults';
+import { buildDemoData, DEMO_COMPANY, DEMO_OWNER } from '../demo/demoData';
+import { generateDemoPhotos } from '../demo/demoPhotos';
 
 export async function exportData(): Promise<{ blob: Blob; fileName: string }> {
   const data = await storage.exportAll();
@@ -16,8 +20,18 @@ export async function exportData(): Promise<{ blob: Blob; fileName: string }> {
 export async function importData(file: File): Promise<{ ok: true } | { ok: false; error: string }> {
   const parsed = parseExportFile(await file.text());
   if (!parsed.ok) return parsed;
+  const d = parsed.data;
+  const settings = migrateSettings(d.settings);
+  const migrated = {
+    ...d,
+    settings,
+    catalog: d.catalog.map((c) => migrateCatalogItem(c, settings.defaultMarginPercent)),
+    projects: d.projects.map(migrateProject),
+    quotes: d.quotes.map(migrateQuote),
+    templates: d.templates ?? builtInTemplates(),
+  };
   try {
-    await storage.importAll(parsed.data);
+    await storage.importAll(migrated);
   } catch (e) {
     console.error(e);
     return { ok: false, error: "L'import a échoué. Vos données actuelles n'ont pas été modifiées." };
@@ -32,28 +46,82 @@ export async function clearAllData(): Promise<void> {
   await loadAll();
 }
 
-export async function loadDemoData(): Promise<void> {
-  const s = getState();
-  const demo = buildDemoData(s.catalog, s.settings);
-  setState({
-    clients: [...s.clients, ...demo.clients],
-    projects: [...s.projects, ...demo.projects],
-    quotes: [...s.quotes, ...demo.quotes],
-    settings: demo.settings,
-  });
-  await persist(async () => {
-    for (const c of demo.clients) await storage.saveClient(c);
-    for (const p of demo.projects) await storage.saveProject(p);
-    for (const q of demo.quotes) await storage.saveQuote(q);
-    await storage.saveSettings(demo.settings);
-  });
-  logActivity('Données de démonstration chargées.');
+// ───────────── Onboarding ─────────────
+
+export interface OnboardingProfile {
+  firstName: string;
+  lastName: string;
+  company: CompanySettings;
+  activities: Activity[];
+  mainServices: string[];
+  goal: Goal | null;
 }
 
-export async function removeDemoData(): Promise<void> {
-  for (const c of getState().clients.filter((c) => c.isDemo)) await deleteClient(c.id);
+/** Crée le compte local et l'espace entreprise. */
+export async function completeOnboarding(profile: OnboardingProfile): Promise<void> {
+  const user = await auth.signUp({ firstName: profile.firstName, lastName: profile.lastName, email: profile.company.email });
+  const settings = {
+    ...getState().settings,
+    company: profile.company,
+    owner: { firstName: profile.firstName.trim(), lastName: profile.lastName.trim() },
+    activities: profile.activities,
+    mainServices: profile.mainServices,
+    goal: profile.goal,
+    onboardingDone: true,
+  };
+  setState({ settings, user });
+  await persist(() => storage.saveSettings(settings));
+  analytics.track('onboarding_completed', { activities: profile.activities.length, services: profile.mainServices.length });
 }
 
-export function hasDemoData(): boolean {
-  return getState().clients.some((c) => c.isDemo);
+// ───────────── Espace de démonstration ─────────────
+
+/**
+ * Ouvre l'espace de démonstration : une base séparée, remplie d'une entreprise, de clients,
+ * de chantiers, de devis et de photos fictifs. Les vraies données ne sont jamais modifiées.
+ */
+export async function openDemo(): Promise<void> {
+  setDemoSpace(true);
+  setState({ ready: false });
+  const existing = await storage.getSettings();
+  if (!existing?.onboardingDone) await seedDemoSpace();
+  await loadAll();
+  analytics.track('demo_opened');
 }
+
+export async function exitDemo(): Promise<void> {
+  setDemoSpace(false);
+  setState({ ready: false });
+  await loadAll();
+}
+
+/** Réinitialise l'espace démo (données fictives d'origine). */
+export async function resetDemo(): Promise<void> {
+  if (!isDemoSpace()) return;
+  await storage.clearAll();
+  await seedDemoSpace();
+  await loadAll();
+}
+
+async function seedDemoSpace(): Promise<void> {
+  const base = migrateSettings(null);
+  const catalog = defaultCatalog();
+  const settings = { ...base, company: { ...base.company, ...DEMO_COMPANY }, owner: DEMO_OWNER, activities: ['landscaper' as const], onboardingDone: true };
+  const demo = buildDemoData(catalog, settings);
+  const photos = await generateDemoPhotos(demo.projects);
+  // Les photos générées sont ajoutées aux devis concernés
+  const quotes = demo.quotes.map((q) => ({
+    ...q,
+    includedPhotoIds: photos.filter((p) => p.projectId === q.projectId && p.tag !== 'after' && p.tag !== 'during').map((p) => p.id),
+  }));
+  await storage.saveSettings(demo.settings);
+  await storage.saveUser({ id: 'demo', firstName: DEMO_OWNER.firstName, lastName: DEMO_OWNER.lastName, email: DEMO_COMPANY.email ?? '', provider: 'local', createdAt: new Date().toISOString() });
+  for (const c of catalog) await storage.saveCatalogItem(c);
+  for (const t of builtInTemplates()) await storage.saveTemplate(t);
+  for (const c of demo.clients) await storage.saveClient(c);
+  for (const p of demo.projects) await storage.saveProject(p);
+  for (const q of quotes) await storage.saveQuote(q);
+  for (const p of photos) await storage.savePhoto(p);
+  for (const a of demo.activity) await storage.addActivity(a);
+}
+

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import {
   BadgeCheck,
@@ -26,6 +26,8 @@ import { FollowUpDialog } from '../../components/FollowUpDialog';
 import { NotFoundPage } from '../NotFoundPage';
 import { finalizeQuote, markAccepted, markRefused, markSent, reopenQuote, updateQuote } from '../../features/quotes/actions';
 import { buildQuotePdf } from '../../features/quotes/pdf';
+import { toPublicQuote } from '../../features/quotes/publicView';
+import { QuoteFlowBar } from '../../components/QuoteFlowBar';
 import { startWork } from '../../features/projects/actions';
 import { isQuoteLocked, QUOTE_STATUS } from '../../features/projects/status';
 import { clientDisplayName } from '../../features/clients/format';
@@ -43,8 +45,12 @@ export function QuotePage() {
   const [followUp, setFollowUp] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmRefuse, setConfirmRefuse] = useState(false);
+  const view = useMemo(
+    () => (project && quote ? toPublicQuote({ quote, project, client, company: settings.company, photos }) : null),
+    [project, quote, client, settings.company, photos],
+  );
 
-  if (!project || !quote || !totals) return <NotFoundPage />;
+  if (!project || !quote || !totals || !view) return <NotFoundPage />;
   const locked = isQuoteLocked(quote);
   const status = QUOTE_STATUS[quote.status];
 
@@ -71,7 +77,7 @@ export function QuotePage() {
   const pdf = async () => {
     setPdfBusy(true);
     try {
-      return await buildQuotePdf({ quote, project, client, company: settings.company, totals, photos, prefix: settings.quotePrefix });
+      return await buildQuotePdf(view, settings.quotePrefix);
     } catch (e) {
       console.error(e);
       toast('La génération du PDF a échoué. Réessayez.', 'danger');
@@ -85,7 +91,7 @@ export function QuotePage() {
     const file = await pdf();
     if (file) {
       downloadBlob(file, file.name);
-      toast(`${file.name} téléchargé.`);
+      toast(`✓ ${file.name} téléchargé`);
     }
   };
 
@@ -105,6 +111,7 @@ export function QuotePage() {
           </span>
         }
       />
+      <QuoteFlowBar current={quote.sentAt ? 'send' : 'quote'} projectId={project.id} quote={quote} />
 
       {/* Actions principales */}
       <div className="no-print grid grid-cols-3 gap-2">
@@ -126,7 +133,7 @@ export function QuotePage() {
           <p className="text-muted">
             Par <strong className="text-ink">{quote.signature.signerName}</strong> le {formatLongDate(quote.signature.signedAt)} à {formatTime(quote.signature.signedAt)}.
           </p>
-          <p className="mt-1 text-xs text-muted">Validation simple du devis sur l’appareil (non qualifiée eIDAS). Empreinte : {quote.signature.contentHash.slice(0, 16)}…</p>
+          <p className="mt-1 text-xs text-muted">Validation simple du devis (signature non qualifiée au sens eIDAS). Empreinte du contenu : {quote.signature.contentHash.slice(0, 16)}…</p>
           <div className="mt-4">
             {project.work ? (
               <ButtonLink to={`/projects/${project.id}/work`} block icon={<Hammer className="h-5 w-5" />}>
@@ -192,12 +199,12 @@ export function QuotePage() {
         </Card>
       )}
 
-      <QuoteDocument quote={quote} project={project} client={client} company={settings.company} totals={totals} photos={photos} />
+      <QuoteDocument view={view} />
 
       {!settings.company.name && (
         <Alert tone="warning">
           Les informations de votre entreprise ne sont pas renseignées.{' '}
-          <a className="font-semibold underline" href="#/settings/company">
+          <a className="font-semibold underline" href="#/company">
             Compléter mon profil
           </a>
         </Alert>

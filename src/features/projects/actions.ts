@@ -14,6 +14,7 @@ import { compressImage } from '../../services/images/compress';
 import { uid } from '../../utils/id';
 import { logActivity } from '../activity';
 import { categoriesText, DEFAULT_CHECKLIST, workStageLabel } from './status';
+import { analytics } from '../../services/analytics/AnalyticsProvider';
 
 export interface NewProjectInput {
   clientId: string;
@@ -43,7 +44,6 @@ export function createProject(input: NewProjectInput): Project {
     validityDays: settings.quoteValidityDays,
     description: input.description,
     lines: [],
-    marginPercent: settings.defaultMarginPercent,
     vatRate: settings.vatRate,
     vatExempt: settings.company.vatExempt,
     depositPercent: settings.defaultDepositPercent,
@@ -65,6 +65,7 @@ export function createProject(input: NewProjectInput): Project {
     categories: input.categories,
     description: input.description,
     siteAddress: input.siteAddress,
+    privateNotes: '',
     estimateMode: 'precise',
     zones: [],
     linears: [],
@@ -79,6 +80,7 @@ export function createProject(input: NewProjectInput): Project {
     await storage.saveQuote(quote);
   });
   logActivity(`Nouveau chantier créé : ${projectTitle(project)}.`, project.id);
+  analytics.track('project_created');
   return project;
 }
 
@@ -201,7 +203,12 @@ export function updateWork(projectId: string, patch: Partial<WorkTracking>): voi
   const project = getState().projects.find((p) => p.id === projectId);
   if (!project?.work) return;
   if (patch.stage && patch.stage !== project.work.stage) {
-    logActivity(`${projectTitle(project)} : étape « ${workStageLabel(patch.stage)} ».`, projectId);
+    const done = patch.stage === 'done';
+    logActivity(
+      done ? `✅ Chantier terminé : ${projectTitle(project)}.` : `${projectTitle(project)} : étape « ${workStageLabel(patch.stage)} ».`,
+      projectId,
+      done ? { kind: 'work_done', notify: true } : {},
+    );
   }
   updateProject(projectId, { work: { ...project.work, ...patch } });
 }

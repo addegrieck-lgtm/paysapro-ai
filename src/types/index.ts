@@ -1,9 +1,26 @@
 // Types métier de Paysapro AI.
 // Toutes les données sont sérialisables en JSON (sauf les Blob des photos, convertis à l'export).
+//
+// Modèle conceptuel (prêt pour une base cloud multi-utilisateurs, cf. docs/MIGRATION-SUPABASE.md) :
+//   User 1─1 Company (réglages) 1─n Client 1─n Project 1─1 Quote
+//                                  Project 1─n Photo · Company 1─n CatalogItem · Company 1─n QuoteTemplate
+// En local, un seul utilisateur par appareil : l'identifiant de propriétaire est implicite.
 
 export type ID = string;
 /** Date ISO 8601 (ex. 2026-09-28T10:15:00.000Z) */
 export type ISODate = string;
+
+// ───────────────────────── Compte ─────────────────────────
+
+export interface User {
+  id: ID;
+  firstName: string;
+  lastName: string;
+  email: string;
+  /** 'local' : compte sur cet appareil uniquement (aucun mot de passe stocké) */
+  provider: 'local' | 'cloud';
+  createdAt: ISODate;
+}
 
 // ───────────────────────── Entreprise ─────────────────────────
 
@@ -22,15 +39,39 @@ export interface CompanySettings {
   iban: string;
   /** Mentions / conditions générales imprimées sur les devis */
   terms: string;
+  /** Couleur principale des devis (hexadécimal) */
+  brandColor: string;
+  /** Pied de page des devis (mentions, assurance, etc.) */
+  quoteFooter: string;
 }
 
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type TextSize = 'normal' | 'large';
 export type AIMode = 'local' | 'demo';
 
+export type Activity =
+  | 'landscaper'
+  | 'gardener'
+  | 'maintenance'
+  | 'garden_design'
+  | 'earthwork'
+  | 'tree_care'
+  | 'fencing'
+  | 'other';
+
+export type Goal = 'faster_quotes' | 'clients' | 'site_tracking' | 'margins' | 'ai' | 'all';
+
+export type NotificationKind = 'signed' | 'viewed' | 'expired' | 'work_done' | 'new_client' | 'info';
+
 export interface AppSettings {
+  schemaVersion: number;
   company: CompanySettings;
+  owner: { firstName: string; lastName: string };
+  activities: Activity[];
+  mainServices: string[];
+  goal: Goal | null;
   vatRate: number;
+  /** Marge appliquée par défaut pour proposer un prix de vente à partir d'un coût */
   defaultMarginPercent: number;
   defaultDepositPercent: number;
   quoteValidityDays: number;
@@ -44,6 +85,8 @@ export interface AppSettings {
   aiMode: AIMode;
   /** Consentement explicite avant tout envoi vers un service IA externe */
   externalAIConsent: boolean;
+  /** Types de notifications affichées dans l'application */
+  notificationPrefs: Record<Exclude<NotificationKind, 'info'>, boolean>;
   onboardingDone: boolean;
 }
 
@@ -133,6 +176,8 @@ export interface Project {
   categories: ProjectCategory[];
   description: string;
   siteAddress: string;
+  /** Notes internes : jamais visibles par le client */
+  privateNotes: string;
   estimateMode: EstimateMode;
   zones: MeasureZone[];
   linears: LinearMeasure[];
@@ -197,8 +242,10 @@ export interface CatalogItem {
   label: string;
   description: string;
   unit: Unit;
-  /** Prix unitaire HT avant marge */
+  /** Prix de vente unitaire HT (ce que voit le client) */
   unitPrice: number;
+  /** Prix d'achat / coût de revient unitaire HT (interne, jamais montré au client) */
+  costPrice: number;
   kind: LineKind;
   quantityRule: QuantityRule;
   /** Pertes / chutes en % ajoutées à la quantité mesurée */
@@ -227,7 +274,10 @@ export interface QuoteLine {
   manualQuantity: number | null;
   wastePercent: number;
   thicknessCm: number | null;
+  /** Prix de vente unitaire HT */
   unitPrice: number;
+  /** Coût unitaire HT (interne) */
+  unitCost: number;
 }
 
 export type QuoteStatus = 'draft' | 'ready' | 'sent' | 'viewed' | 'accepted' | 'signed' | 'refused';
@@ -266,7 +316,6 @@ export interface Quote {
   validityDays: number;
   description: string;
   lines: QuoteLine[];
-  marginPercent: number;
   vatRate: number;
   vatExempt: boolean;
   depositPercent: number;
@@ -283,12 +332,90 @@ export interface Quote {
   updatedAt: ISODate;
 }
 
-// ───────────────────────── Journal d'activité ─────────────────────────
+// ───────────────────────── Modèles de devis ─────────────────────────
+
+export interface QuoteTemplate {
+  id: ID;
+  name: string;
+  description: string;
+  categories: ProjectCategory[];
+  /** Prestations du catalogue (par libellé) + quantité facultative */
+  items: { label: string; quantity: number | null }[];
+  /** Lignes complètes (modèles créés à partir d'un devis) */
+  lines: Omit<QuoteLine, 'id'>[];
+  builtIn: boolean;
+  createdAt: ISODate;
+}
+
+// ───────────────────────── Journal d'activité & notifications ─────────────────────────
 
 export interface ActivityEvent {
   id: ID;
   projectId: ID | null;
   message: string;
+  kind?: NotificationKind;
+  /** Affiché dans le centre de notifications */
+  notify?: boolean;
+  read?: boolean;
+  createdAt: ISODate;
+}
+
+// ───────────────────────── Bêta, contact, feedback, analytics ─────────────────────────
+
+export interface BetaLead {
+  id: ID;
+  firstName: string;
+  lastName: string;
+  company: string;
+  email: string;
+  phone: string;
+  activity: string;
+  teamSize: string;
+  quotesPerMonth: string;
+  currentSoftware: string;
+  mainProblem: string;
+  comment: string;
+  createdAt: ISODate;
+}
+
+export interface ContactMessage {
+  id: ID;
+  name: string;
+  email: string;
+  message: string;
+  createdAt: ISODate;
+}
+
+export interface FeedbackEntry {
+  id: ID;
+  rating: number | null;
+  likes: string;
+  missing: string;
+  timeWasters: string;
+  wishedFeature: string;
+  createdAt: ISODate;
+}
+
+export type AnalyticsEventName =
+  | 'app_opened'
+  | 'onboarding_completed'
+  | 'client_created'
+  | 'project_created'
+  | 'quote_created'
+  | 'quote_sent'
+  | 'quote_viewed'
+  | 'quote_signed'
+  | 'pdf_generated'
+  | 'ai_used'
+  | 'beta_form_submitted'
+  | 'contact_submitted'
+  | 'feedback_submitted'
+  | 'demo_opened';
+
+export interface AnalyticsEvent {
+  id: ID;
+  name: AnalyticsEventName;
+  props: Record<string, string | number | boolean>;
   createdAt: ISODate;
 }
 
@@ -310,4 +437,7 @@ export interface ExportFile {
   catalog: CatalogItem[];
   photos: ExportedPhoto[];
   activity: ActivityEvent[];
+  /** Ajouté en v0.1 bêta (absent des anciennes sauvegardes) */
+  templates?: QuoteTemplate[];
+  user?: User | null;
 }

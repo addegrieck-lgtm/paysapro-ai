@@ -14,7 +14,7 @@ export function QuoteSettingsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader back="/more" title="TVA & devis" subtitle="Valeurs par défaut des nouveaux devis. Enregistrement automatique." />
+      <PageHeader back="/settings" title="Paramètres des devis" subtitle="Valeurs par défaut des nouveaux devis. Enregistrement automatique." />
 
       <Card>
         <CardTitle>TVA</CardTitle>

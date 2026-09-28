@@ -9,7 +9,7 @@ export function AppearancePage() {
   const { settings } = useAppState();
   return (
     <div className="space-y-5">
-      <PageHeader back="/more" title="Apparence" />
+      <PageHeader back="/settings" title="Apparence" />
       <Card>
         <h2 className="mb-3 font-semibold">Thème</h2>
         <Segmented<ThemePreference>

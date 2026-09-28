@@ -48,7 +48,15 @@ export function ProjectsPage() {
 
   return (
     <div>
-      <PageHeader title="Chantiers" subtitle={`${projects.length} chantier${projects.length > 1 ? 's' : ''}`} />
+      <PageHeader
+        title="Chantiers"
+        subtitle={`${projects.length} chantier${projects.length > 1 ? 's' : ''}`}
+        actions={
+          <ButtonLink to="/projects/new" size="sm" variant="soft">
+            + Chantier
+          </ButtonLink>
+        }
+      />
       {projects.length > 0 && (
         <div className="mb-4 space-y-3">
           <label className="relative block">

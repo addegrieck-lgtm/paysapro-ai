@@ -50,6 +50,9 @@ export class ExternalAIProvider implements AIProvider {
   async generateDescription(): Promise<string> {
     throw new Error(UNAVAILABLE);
   }
+  async generateQuoteDescription(): Promise<string> {
+    throw new Error(UNAVAILABLE);
+  }
   async generateVisualization(): Promise<VisualizationResult> {
     assertExternalConsent(this.settings);
     return { available: false, message: UNAVAILABLE };

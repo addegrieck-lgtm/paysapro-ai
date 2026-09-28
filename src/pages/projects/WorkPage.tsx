@@ -9,6 +9,7 @@ import { Chip, TextArea, TextField } from '../../components/ui/Form';
 import { Alert, EmptyState } from '../../components/ui/Feedback';
 import { PhotoThumb } from '../../components/PhotoThumb';
 import { PaymentDialog } from '../../components/PaymentDialog';
+import { BeforeAfterSlider } from '../../components/BeforeAfter';
 import { FollowUpDialog } from '../../components/FollowUpDialog';
 import { NotFoundPage } from '../NotFoundPage';
 import { startWork, updateWork } from '../../features/projects/actions';
@@ -213,6 +214,9 @@ function BeforeAfter({ projectId, photos }: { projectId: string; photos: PhotoMe
     { title: 'Pendant', tags: ['during'] },
     { title: 'Après', tags: ['after'] },
   ];
+  const first = photos.find((p) => cols[0]!.tags.includes(p.tag));
+  const last = [...photos].reverse().find((p) => p.tag === 'after');
+  const beforeAfter = first && last ? { before: first.id, after: last.id } : null;
   return (
     <Card>
       <CardTitle
@@ -225,6 +229,11 @@ function BeforeAfter({ projectId, photos }: { projectId: string; photos: PhotoMe
       >
         Avant / après
       </CardTitle>
+      {beforeAfter && (
+        <div className="mb-4">
+          <BeforeAfterSlider beforeId={beforeAfter.before} afterId={beforeAfter.after} />
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-3">
         {cols.map((c) => {
           const list = photos.filter((p) => c.tags.includes(p.tag));

@@ -9,6 +9,10 @@ import { logActivity } from '../activity';
 import { clientDisplayName } from '../clients/format';
 import { nextQuoteNumber } from './numbering';
 import { isQuoteLocked } from '../projects/status';
+import { analytics } from '../../services/analytics/AnalyticsProvider';
+import { applyMarginToLines } from './pricing';
+import { linesFromTemplate } from './lines';
+import type { QuoteTemplate } from '../../types';
 
 function save(quote: Quote): Quote {
   const saved = { ...quote, updatedAt: new Date().toISOString() };
@@ -77,6 +81,7 @@ export function finalizeQuote(quoteId: string): Quote | undefined {
     status: 'ready',
   });
   logActivity(`Devis ${number} créé pour ${clientName(saved)}.`, saved.projectId);
+  analytics.track('quote_created', { lines: saved.lines.length });
   return saved;
 }
 
@@ -87,6 +92,7 @@ export function markSent(quoteId: string): void {
   if (q.status === 'draft' || q.status === 'ready' || q.status === 'refused') {
     save({ ...q, status: 'sent', sentAt: q.sentAt ?? new Date().toISOString(), refusedAt: null });
     logActivity(`Devis ${q.number} envoyé à ${clientName(q)}.`, q.projectId);
+    analytics.track('quote_sent');
   }
 }
 
@@ -95,7 +101,8 @@ export function markViewed(quoteId: string): void {
   const q = find(quoteId);
   if (!q || q.status !== 'sent') return;
   save({ ...q, status: 'viewed', viewedAt: new Date().toISOString() });
-  logActivity(`Le devis de ${clientName(q)} a été consulté.`, q.projectId);
+  logActivity(`👀 ${clientName(q)} a consulté le devis #${q.number}.`, q.projectId, { kind: 'viewed', notify: true });
+  analytics.track('quote_viewed');
 }
 
 export function markAccepted(quoteId: string, source: 'client' | 'pro'): void {
@@ -135,7 +142,8 @@ export async function signQuote(quoteId: string, signerName: string, imageDataUr
     acceptedAt: q.acceptedAt ?? signature.signedAt,
     sentAt: q.sentAt ?? signature.signedAt,
   });
-  logActivity(`Devis ${q.number} signé par ${signature.signerName}.`, q.projectId);
+  logActivity(`🎉 ${clientName(q)} vient de signer le devis #${q.number}.`, q.projectId, { kind: 'signed', notify: true });
+  analytics.track('quote_signed');
   return saved;
 }
 
@@ -159,4 +167,20 @@ export function removePayment(quoteId: string, paymentId: string): void {
 export function quoteForProject(project: Project | undefined): Quote | undefined {
   if (!project?.quoteId) return undefined;
   return getState().quotes.find((q) => q.id === project.quoteId);
+}
+
+/** Recalcule les prix de vente à partir des coûts avec une marge (%) — outil « Appliquer une marge ». */
+export function applyMarginToQuote(quoteId: string, marginPercent: number): void {
+  const q = find(quoteId);
+  if (!q || isQuoteLocked(q)) return;
+  save({ ...q, lines: applyMarginToLines(q.lines, marginPercent) });
+}
+
+/** Ajoute les prestations d'un modèle au devis. Renvoie les libellés introuvables dans le catalogue. */
+export function applyTemplate(quoteId: string, template: QuoteTemplate): string[] {
+  const q = find(quoteId);
+  if (!q || isQuoteLocked(q)) return [];
+  const { lines, missing } = linesFromTemplate(template, getState().catalog);
+  save({ ...q, lines: [...q.lines, ...lines], description: q.description.trim() ? q.description : template.description });
+  return missing;
 }

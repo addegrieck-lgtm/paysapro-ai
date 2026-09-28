@@ -6,7 +6,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Alert, ConfirmDialog, useToast } from '../../components/ui/Feedback';
-import { clearAllData, exportData, importData, loadDemoData, removeDemoData } from '../../features/settings/dataActions';
+import { clearAllData, exportData, importData, exitDemo, openDemo, resetDemo } from '../../features/settings/dataActions';
 import { downloadBlob } from '../../lib/share';
 import { storageEstimate } from '../../lib/pwa';
 import { formatNumber } from '../../utils/number';
@@ -16,7 +16,7 @@ function mb(bytes: number) {
 }
 
 export function DataPage() {
-  const { clients, projects, quotes, photos } = useAppState();
+  const { clients, projects, quotes, photos, demo } = useAppState();
   const toast = useToast();
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -24,7 +24,6 @@ export function DataPage() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<{ used: number; quota: number } | null>(null);
-  const hasDemo = clients.some((c) => c.isDemo);
 
   useEffect(() => {
     void storageEstimate().then(setUsage);
@@ -32,7 +31,7 @@ export function DataPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader back="/more" title="Données" subtitle="Vos données sont stockées uniquement sur cet appareil." />
+      <PageHeader back="/settings" title="Données" subtitle={demo ? "Espace de démonstration (données fictives)." : "Vos données sont stockées uniquement sur cet appareil."} />
 
       <Card>
         <CardTitle icon={<Database className="h-5 w-5" />}>Sur cet appareil</CardTitle>
@@ -79,7 +78,7 @@ export function DataPage() {
               }
             }}
           >
-            Exporter mes données (JSON)
+            Télécharger une sauvegarde
           </Button>
           <Button variant="secondary" icon={<Upload className="h-5 w-5" />} onClick={() => fileRef.current?.click()}>
             Importer une sauvegarde
@@ -100,29 +99,41 @@ export function DataPage() {
 
       <Card>
         <CardTitle icon={<FlaskConical className="h-5 w-5" />}>Démonstration</CardTitle>
-        <p className="mb-3 text-sm text-muted">Jean Dupont, Marie Martin et Entreprise Exemple, avec quelques chantiers à différentes étapes.</p>
-        {hasDemo ? (
-          <Button
-            variant="secondary"
-            block
-            onClick={async () => {
-              await removeDemoData();
-              toast('Données de démonstration retirées.');
-            }}
-          >
-            Retirer les données de démonstration
-          </Button>
+        <p className="mb-3 text-sm text-muted">
+          Un espace séparé avec une entreprise, des clients, des chantiers, des devis et des photos fictifs, pour montrer l’application à un prospect. Vos vraies données ne sont jamais modifiées.
+        </p>
+        {demo ? (
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              onClick={async () => {
+                await exitDemo();
+                toast('✓ Retour à votre espace');
+                navigate('/app');
+              }}
+            >
+              Quitter la démo
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                await resetDemo();
+                toast('✓ Démo réinitialisée');
+              }}
+            >
+              Réinitialiser la démo
+            </Button>
+          </div>
         ) : (
           <Button
             variant="soft"
             block
             onClick={async () => {
-              await loadDemoData();
-              toast('Données de démonstration chargées.');
-              navigate('/');
+              await openDemo();
+              toast('Espace de démonstration ouvert.', 'info');
+              navigate('/app');
             }}
           >
-            Charger des données de démonstration
+            Ouvrir l’espace de démonstration
           </Button>
         )}
       </Card>
@@ -155,7 +166,7 @@ export function DataPage() {
           const res = await importData(f);
           if (res.ok) {
             toast('Sauvegarde importée.');
-            navigate('/');
+            navigate('/app');
           } else toast(res.error, 'danger');
         }}
       />

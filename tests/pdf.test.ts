@@ -2,7 +2,7 @@ import { writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { defaultCatalog, defaultSettings } from '../src/data/defaults';
 import { buildDemoData } from '../src/features/demo/demoData';
-import { computeTotals } from '../src/features/quotes/pricing';
+import { toPublicQuote } from '../src/features/quotes/publicView';
 import { generateQuotePdf, pdfText } from '../src/services/pdf/quotePdf';
 
 describe('PDF du devis', () => {
@@ -17,15 +17,10 @@ describe('PDF du devis', () => {
     const demo = buildDemoData(defaultCatalog(), settings, new Date(2026, 8, 28));
     const quote = { ...demo.quotes[0]!, includedPhotoIds: [], description: 'Création d’une pelouse en rouleaux, massif avec un olivier et bordures acier.' };
     const project = demo.projects[0]!;
-    const blob = await generateQuotePdf({
-      quote,
-      project,
-      client: demo.clients[0],
-      company: settings.company,
-      totals: computeTotals(quote, project),
-      photos: [],
-      loadPhoto: async () => undefined,
-    });
+    settings.company.quoteFooter = 'Assurance décennale n° 000000 — modèle de pied de page';
+    settings.company.brandColor = '#155e63';
+    const view = toPublicQuote({ quote, project, client: demo.clients[0], company: settings.company, photos: [] });
+    const blob = await generateQuotePdf({ view, loadPhoto: async () => undefined });
     const bytes = new Uint8Array(await blob.arrayBuffer());
     expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe('%PDF-');
     expect(bytes.length).toBeGreaterThan(3000);

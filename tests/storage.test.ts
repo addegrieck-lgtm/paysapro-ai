@@ -42,7 +42,7 @@ describe('stockage IndexedDB', () => {
     const demo = buildDemoData(defaultCatalog(), settings);
     for (const p of demo.projects) await db.saveProject(p);
     for (const q of demo.quotes) await db.saveQuote(q);
-    expect(await db.getProjects()).toHaveLength(3);
+    expect(await db.getProjects()).toHaveLength(4);
     const q = demo.quotes[0]!;
     expect((await db.getQuote(q.id))?.number).toBe(q.number);
   });
@@ -90,7 +90,7 @@ describe('export / import', () => {
     const b = fresh();
     await b.saveClient(client('ancien')); // sera remplacé
     await b.importAll(parsed.data);
-    expect((await b.getClients()).map((c) => c.lastName).sort()).toEqual(['', 'Dupont', 'Martin']);
+    expect((await b.getClients()).map((c) => c.lastName).sort()).toEqual(['', 'Bernard', 'Dupont', 'Martin']);
     expect(await b.getCatalog()).toHaveLength(catalog.length);
     expect((await b.getSettings())?.quoteCounter).toEqual(demo.settings.quoteCounter);
     const photo = await b.getPhoto('ph');

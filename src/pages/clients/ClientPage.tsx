@@ -32,8 +32,9 @@ export function ClientPage() {
     const signed = qs.filter((q) => q.status === 'signed' || q.status === 'accepted').reduce((s, q) => s + totalFor(q.id), 0);
     const ids = new Set(ps.map((p) => p.id));
     const history = activity.filter((a) => a.projectId && ids.has(a.projectId)).sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 15);
-    return { ps, qs, quoted, signed, history, totalFor };
-  }, [projects, quotes, activity, id]);
+    const last = [...history.map((h) => h.createdAt), client?.updatedAt ?? ''].sort().at(-1) ?? null;
+    return { ps, qs, quoted, signed, history, totalFor, last };
+  }, [projects, quotes, activity, id, client]);
 
   if (!client) return <NotFoundPage message="Ce client n’existe pas ou a été supprimé." />;
 
@@ -80,6 +81,7 @@ export function ClientPage() {
         <Stat label="Montant des devis" value={formatMoney(data.quoted, true)} hint={`${data.qs.length} devis`} />
         <Stat label="Accepté / signé" value={formatMoney(data.signed, true)} />
       </div>
+      {data.last && <p className="text-sm text-muted">Dernière activité : {relativeTime(data.last)}</p>}
 
       <section>
         <div className="mb-3 flex items-center justify-between">

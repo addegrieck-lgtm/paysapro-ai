@@ -7,6 +7,7 @@ import { Button, ButtonLink, IconButton } from '../../components/ui/Button';
 import { Checkbox, NumberField, Segmented, SelectField, TextField } from '../../components/ui/Form';
 import { Alert } from '../../components/ui/Feedback';
 import { NotFoundPage } from '../NotFoundPage';
+import { QuoteFlowBar } from '../../components/QuoteFlowBar';
 import { newLinear, newZone, updateProject } from '../../features/projects/actions';
 import { SHAPES, totalArea, totalLength, zoneArea } from '../../features/measurements/geometry';
 import { clientDisplayName } from '../../features/clients/format';
@@ -15,7 +16,7 @@ import type { EstimateMode, LinearMeasure, MeasureZone, ZoneShape } from '../../
 
 export function MeasuresPage() {
   const { id } = useParams();
-  const { project, client } = useProjectData(id);
+  const { project, client, quote } = useProjectData(id);
   if (!project) return <NotFoundPage />;
 
   const quick = project.estimateMode === 'quick';
@@ -30,6 +31,7 @@ export function MeasuresPage() {
   return (
     <div className="space-y-5">
       <PageHeader back={`/projects/${project.id}`} title="Mesures du chantier" subtitle={clientDisplayName(client)} />
+      <QuoteFlowBar current="measures" projectId={project.id} quote={quote} />
 
       <Card>
         <Segmented<EstimateMode>
@@ -108,7 +110,7 @@ export function MeasuresPage() {
 
       <StickyActions>
         <ButtonLink to={`/projects/${project.id}/services`} block size="lg" icon={<ArrowRight className="h-5 w-5" />}>
-          Continuer : Prestations
+          Continuer : prestations & prix
         </ButtonLink>
       </StickyActions>
     </div>

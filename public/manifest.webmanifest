@@ -3,7 +3,7 @@
   "short_name": "Paysapro",
   "description": "Devis et gestion de chantiers pour paysagistes.",
   "lang": "fr",
-  "start_url": "./#/",
+  "start_url": "./#/app",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",

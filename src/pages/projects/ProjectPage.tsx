@@ -6,6 +6,7 @@ import { PageHeader, StickyActions } from '../../components/ui/PageHeader';
 import { Badge, Card, CardTitle } from '../../components/ui/Card';
 import { ButtonLink, Button, IconButton } from '../../components/ui/Button';
 import { Chip, TextArea, TextField } from '../../components/ui/Form';
+import { PrivateNotes } from '../../components/PrivateNotes';
 import { ConfirmDialog, Dialog, useToast } from '../../components/ui/Feedback';
 import { NotFoundPage } from '../NotFoundPage';
 import { clientAddress, clientDisplayName } from '../../features/clients/format';
@@ -85,6 +86,8 @@ export function ProjectPage() {
           </Card>
         </Link>
       )}
+
+      <PrivateNotes projectId={project.id} value={project.privateNotes} />
 
       <Card>
         <CardTitle>Avancement</CardTitle>

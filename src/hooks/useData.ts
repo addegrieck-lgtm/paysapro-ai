@@ -14,8 +14,8 @@ export function useProjectData(projectId: string | undefined) {
       ? s.photos.filter((p) => p.projectId === project.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
       : [];
     const totals = quote && project ? computeTotals(quote, project) : undefined;
-    return { project, quote, client, photos, totals, settings: s.settings, catalog: s.catalog };
-  }, [s.projects, s.quotes, s.clients, s.photos, s.settings, s.catalog, projectId]);
+    return { project, quote, client, photos, totals, settings: s.settings, catalog: s.catalog, templates: s.templates };
+  }, [s.projects, s.quotes, s.clients, s.photos, s.settings, s.catalog, s.templates, projectId]);
 }
 
 // Cache des URL d'images : une vignette n'est chargée qu'une fois par session.

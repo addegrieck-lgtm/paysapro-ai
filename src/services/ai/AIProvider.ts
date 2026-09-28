@@ -56,6 +56,8 @@ export interface AIProvider {
   suggestServices(ctx: ProjectContext): Promise<ServiceSuggestion[]>;
   estimateProject(ctx: ProjectContext): Promise<ProjectEstimate>;
   generateDescription(ctx: ProjectContext, elements: string[]): Promise<string>;
+  /** Description professionnelle des travaux à partir des prestations du devis */
+  generateQuoteDescription(ctx: ProjectContext, lineLabels: string[]): Promise<string>;
   generateVisualization(photo: Blob, elements: string[]): Promise<VisualizationResult>;
 }
 

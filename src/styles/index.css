@@ -170,6 +170,37 @@ dialog::backdrop {
   background: rgb(10 16 13 / 0.55);
 }
 
+/* Panneau bas (mobile) */
+@media (max-width: 639px) {
+  dialog.drawer[open] {
+    animation: drawer-up 0.22s ease-out;
+    max-height: 85vh;
+  }
+}
+@keyframes drawer-up {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+}
+
+/* Parcours de démonstration (landing) */
+@keyframes flow-step {
+  0%,
+  100% {
+    transform: none;
+    box-shadow: var(--shadow);
+  }
+  10%,
+  18% {
+    transform: translateY(-4px) scale(1.03);
+    box-shadow: 0 10px 30px rgb(31 92 68 / 0.25);
+  }
+}
+.flow-step {
+  animation: flow-step 7.5s ease-in-out infinite;
+}
+
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
 }

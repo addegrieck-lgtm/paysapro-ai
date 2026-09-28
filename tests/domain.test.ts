@@ -4,7 +4,7 @@ import { buildDemoData } from '../src/features/demo/demoData';
 import { computeStats } from '../src/features/stats/stats';
 import { getProjectStatus } from '../src/features/projects/status';
 import { projectTimeline } from '../src/features/projects/timeline';
-import { computeNotifications } from '../src/features/notifications/notifications';
+import { computeNotifications, notificationCenter } from '../src/features/notifications/notifications';
 import { LocalAIProvider } from '../src/services/ai/LocalAIProvider';
 import { MockAIProvider } from '../src/services/ai/MockAIProvider';
 import { assertExternalConsent, ConsentRequiredError } from '../src/services/ai/ExternalAIProvider';
@@ -35,30 +35,38 @@ describe('statuts et timeline', () => {
 describe('statistiques (données réelles)', () => {
   it('aucune donnée → zéros', () => {
     expect(computeStats([], [])).toEqual({
-      quoteCount: 0, quotedAmount: 0, acceptedCount: 0, signedAmount: 0, inProgressCount: 0, collectedAmount: 0, conversionRate: null,
+      quoteCount: 0, quotedAmount: 0, monthCount: 0, monthAmount: 0, acceptedCount: 0, signedAmount: 0, inProgressCount: 0, collectedAmount: 0, conversionRate: null, averageQuote: null, signedMargin: 0,
     });
   });
-  it('démo : 2 devis émis, 1 signé, 1 000 € encaissés', () => {
+  it('démo : 3 devis émis, 2 signés, 3 682 € encaissés', () => {
     const d = demo();
     const s = computeStats(d.projects, d.quotes);
-    expect(s.quoteCount).toBe(2);
-    expect(s.acceptedCount).toBe(1);
-    expect(s.collectedAmount).toBe(1000);
+    expect(s.quoteCount).toBe(3);
+    expect(s.acceptedCount).toBe(2);
+    expect(s.collectedAmount).toBe(3682);
     expect(s.inProgressCount).toBe(1);
-    expect(s.conversionRate).toBe(50);
+    expect(s.conversionRate).toBe(67);
     expect(s.signedAmount).toBeGreaterThan(0);
   });
 });
 
-describe('notifications locales', () => {
-  it('devis consulté et chantier qui commence demain', () => {
+describe('notifications', () => {
+  it('alertes : chantier qui commence demain', () => {
     const d = demo();
     const now = new Date(2026, 8, 28);
     const p2 = { ...d.projects[1]!, work: { ...d.projects[1]!.work!, stage: 'planned' as const, startDate: '2026-09-29' } };
-    const list = computeNotifications([d.projects[0]!, p2], d.quotes, d.clients, now);
-    const msgs = list.map((n) => n.message);
+    const msgs = computeNotifications([d.projects[0]!, p2], d.quotes, d.clients, now).map((n) => n.message);
     expect(msgs).toContain('Le chantier de Marie Martin commence demain.');
-    expect(msgs).toContain('Le devis de Jean Dupont a été consulté.');
+  });
+  it('centre : événements enregistrés, filtrés par préférences, badge = non lus', () => {
+    const d = demo();
+    const prefs = { signed: true, viewed: true, expired: true, work_done: true, new_client: true };
+    const all = notificationCenter(d.activity, [], prefs);
+    expect(all.items.some((n) => n.message.includes('vient de signer'))).toBe(true);
+    expect(all.unread).toBe(1); // « Jean Dupont a consulté » (il y a 1 jour)
+    const noViewed = notificationCenter(d.activity, [], { ...prefs, viewed: false });
+    expect(noViewed.items.some((n) => n.kind === 'viewed')).toBe(false);
+    expect(noViewed.unread).toBe(0);
   });
 });
 

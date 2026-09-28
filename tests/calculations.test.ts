@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { MeasureZone, QuoteLine } from '../src/types';
 import { totalArea, totalLength, zoneArea } from '../src/features/measurements/geometry';
 import { borders, fence, gravel, labor, lawn, planting, terrace, volume, withWaste } from '../src/features/measurements/calculators';
-import { applyMargin, computeTotals, depositOf, vatOf } from '../src/features/quotes/pricing';
+import { applyMargin, applyMarginToLines, computeTotals, depositOf, vatOf } from '../src/features/quotes/pricing';
 import { resolveQuantity } from '../src/features/quotes/quantity';
 import { formatQuoteNumber, nextQuoteNumber, quoteFileName } from '../src/features/quotes/numbering';
 import { formatMoney, parseDecimal, round } from '../src/utils/number';
@@ -34,6 +34,7 @@ const line = (p: Partial<QuoteLine>): QuoteLine => ({
   wastePercent: 0,
   thicknessCm: null,
   unitPrice: 0,
+  unitCost: 0,
   ...p,
 });
 
@@ -118,36 +119,48 @@ describe('marge, TVA, total, acompte', () => {
   it('TVA 20 % de 2 899 € = 579,80 €', () => expect(vatOf(2899, 20)).toBe(579.8));
   it('acompte 30 % de 4 850 € = 1 455 €', () => expect(depositOf(4850, 30)).toBe(1455));
 
-  it('exemple complet : 10 × 8 m, gazon + préparation + transport → 2 230 € → 2 899 € HT', () => {
-    const src = { zones: [zone({ length: 10, width: 8 })], linears: [] };
+  it('80 m² de gazon à 12 €/m² → 960 € HT', () => {
     const t = computeTotals(
-      {
-        lines: [
-          line({ label: 'Gazon', unitPrice: 18 }),
-          line({ label: 'Préparation', unitPrice: 8 }),
-          line({ label: 'Transport', unit: 'flat', quantityRule: 'manual', measureRef: { type: 'manual' }, manualQuantity: 1, unitPrice: 150, kind: 'transport' }),
-        ],
-        marginPercent: 30,
-        vatRate: 20,
-        vatExempt: false,
-        depositPercent: 30,
-      },
-      src,
+      { lines: [line({ label: 'Gazon', unitPrice: 12, unitCost: 4 })], vatRate: 20, vatExempt: false, depositPercent: 30 },
+      { zones: [zone({ length: 10, width: 8 })], linears: [] },
     );
+    expect(t.totalHT).toBe(960);
+    expect(t.costTotal).toBe(320);
+    expect(t.marginAmount).toBe(640);
+  });
+
+  it('exemple complet : coût 2 230 €, marge 30 % appliquée → 2 899 € HT', () => {
+    const src = { zones: [zone({ length: 10, width: 8 })], linears: [] };
+    const costLines = [
+      line({ label: 'Gazon', unitCost: 18 }),
+      line({ label: 'Préparation', unitCost: 8 }),
+      line({ label: 'Transport', unit: 'flat', quantityRule: 'manual', measureRef: { type: 'manual' }, manualQuantity: 1, unitCost: 150, kind: 'transport' }),
+    ];
+    const t = computeTotals({ lines: applyMarginToLines(costLines, 30), vatRate: 20, vatExempt: false, depositPercent: 30 }, src);
     expect(t.lines.map((l) => l.costTotal)).toEqual([1440, 640, 150]);
     expect(t.costTotal).toBe(2230);
     expect(t.totalHT).toBe(2899);
     expect(t.marginAmount).toBe(669);
+    expect(t.marginRate).toBe(23.1);
     expect(t.vatAmount).toBe(579.8);
     expect(t.totalTTC).toBe(3478.8);
     expect(t.depositAmount).toBe(1043.64);
     expect(t.balanceAmount).toBe(2435.16);
-    expect(t.costByKind.transport).toBe(150);
+    expect(t.saleByGroup).toEqual({ materials: 0, labor: 2704, other: 195 });
+  });
+
+  it('marge affichée au pro : 4 000 € HT − 2 200 € de coût = 1 800 €', () => {
+    const t = computeTotals(
+      { lines: [line({ quantityRule: 'manual', measureRef: { type: 'manual' }, manualQuantity: 1, unitPrice: 4000, unitCost: 2200 })], vatRate: 20, vatExempt: false, depositPercent: 0 },
+      { zones: [], linears: [] },
+    );
+    expect(t.marginAmount).toBe(1800);
+    expect(t.marginRate).toBe(45);
   });
 
   it('TVA non applicable (micro-entreprise)', () => {
     const t = computeTotals(
-      { lines: [line({ quantityRule: 'manual', measureRef: { type: 'manual' }, manualQuantity: 2, unitPrice: 100 })], marginPercent: 0, vatRate: 20, vatExempt: true, depositPercent: 0 },
+      { lines: [line({ quantityRule: 'manual', measureRef: { type: 'manual' }, manualQuantity: 2, unitPrice: 100 })], vatRate: 20, vatExempt: true, depositPercent: 0 },
       { zones: [], linears: [] },
     );
     expect(t.vatAmount).toBe(0);
@@ -155,9 +168,10 @@ describe('marge, TVA, total, acompte', () => {
   });
 
   it('les pourcentages hors bornes sont ramenés entre 0 et 100', () => {
-    const t = computeTotals({ lines: [], marginPercent: 250, vatRate: -5, vatExempt: false, depositPercent: NaN }, { zones: [], linears: [] });
-    expect(t.marginPercent).toBe(100);
-    expect(t.vatRate).toBe(0);
+    const t = computeTotals({ lines: [], vatRate: 250, vatExempt: false, depositPercent: NaN }, { zones: [], linears: [] });
+    expect(t.vatRate).toBe(100);
+    const t2 = computeTotals({ lines: [], vatRate: -5, vatExempt: false, depositPercent: 30 }, { zones: [], linears: [] });
+    expect(t2.vatRate).toBe(0);
     expect(t.depositPercent).toBe(0);
     expect(Number.isNaN(t.totalTTC)).toBe(false);
   });
@@ -166,7 +180,6 @@ describe('marge, TVA, total, acompte', () => {
     const t = computeTotals(
       {
         lines: [line({ quantityRule: 'manual', measureRef: { type: 'manual' }, manualQuantity: 1, unitPrice: 1000 })],
-        marginPercent: 0,
         vatRate: 0,
         vatExempt: false,
         depositPercent: 30,

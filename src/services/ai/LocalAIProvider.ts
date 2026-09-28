@@ -26,7 +26,7 @@ const BY_CATEGORY: Partial<Record<ProjectCategory, Rule[]>> = {
   lawn: [
     { match: 'preparation du terrain', label: 'Préparation du terrain', need: 'area' },
     { match: 'pose de gazon', label: 'Pose de gazon', need: 'area' },
-    { match: 'gazon en rouleaux', label: 'Gazon en rouleaux (fourniture)', need: 'area' },
+    { match: 'gazon en plaques', label: 'Gazon en plaques (fourniture)', need: 'area' },
     { match: 'evacuation', label: 'Évacuation des déchets verts', need: 'none' },
   ],
   creation: [
@@ -134,6 +134,40 @@ const ELEMENT_PHRASES: Record<string, string> = {
   bordures: 'des bordures nettes entre pelouse et massifs',
 };
 
+const LINE_PHRASES: [string, string][] = [
+  ['preparation du terrain', 'préparation complète du terrain'],
+  ['gazon en plaques', 'fourniture d’un gazon en plaques'],
+  ['pose de gazon', 'pose du gazon'],
+  ['terre vegetale', 'apport de terre végétale'],
+  ['gravier', 'fourniture et mise en place de gravier décoratif'],
+  ['terrassement', 'terrassement et décaissement'],
+  ['terrasse bois', 'réalisation d’une terrasse en bois'],
+  ['terrasse composite', 'réalisation d’une terrasse en composite'],
+  ['fourniture cloture', 'fourniture de la clôture'],
+  ['pose de cloture', 'pose de la clôture'],
+  ['bordures', 'pose de bordures'],
+  ['fourniture plant', 'fourniture des végétaux'],
+  ['plantation', 'plantation'],
+  ['tonte', 'tonte des pelouses'],
+  ['taille de haie', 'taille des haies'],
+  ['debroussaillage', 'débroussaillage'],
+  ['elagage', 'élagage'],
+  ['evacuation', 'évacuation des déchets verts'],
+  ['main-d', ''],
+  ['journee d', ''],
+  ['transport', ''],
+  ['consommables', ''],
+  ['location', ''],
+];
+
+/** Phrase de description d'une prestation (vide = ligne purement administrative). */
+function describeLine(label: string): string {
+  const n = normalize(label);
+  const hit = LINE_PHRASES.find(([k]) => n.includes(k));
+  if (hit) return hit[1];
+  return label.trim() ? label.trim().charAt(0).toLowerCase() + label.trim().slice(1) : '';
+}
+
 export const VISUALIZATION_ELEMENTS = Object.keys(ELEMENT_PHRASES);
 
 export class LocalAIProvider implements AIProvider {
@@ -219,6 +253,14 @@ export class LocalAIProvider implements AIProvider {
       'Les travaux comprennent la préparation du terrain, la fourniture et la mise en œuvre des matériaux, ' +
       'ainsi que le nettoyage du chantier en fin d’intervention.'
     );
+  }
+
+  async generateQuoteDescription(ctx: ProjectContext, lineLabels: string[]): Promise<string> {
+    const phrases = [...new Set(lineLabels.map(describeLine).filter(Boolean))];
+    if (phrases.length === 0) return '';
+    const list = phrases.length === 1 ? phrases[0] : `${phrases.slice(0, -1).join(', ')} et ${phrases.at(-1)}`;
+    const surface = ctx.area ? ` sur une surface ${ctx.areaApproximate ? 'd’environ' : 'de'} ${formatNumber(ctx.area)} m²` : '';
+    return `Travaux prévus${surface} : ${list}. Nettoyage du chantier en fin d’intervention.`;
   }
 
   async generateVisualization(): Promise<VisualizationResult> {

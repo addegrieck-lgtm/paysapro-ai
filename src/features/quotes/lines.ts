@@ -1,4 +1,4 @@
-import type { CatalogItem, MeasureRef, QuoteLine } from '../../types';
+import type { CatalogItem, MeasureRef, QuoteLine, QuoteTemplate } from '../../types';
 import { uid } from '../../utils/id';
 
 /** Référence de mesure par défaut : total du chantier pour les surfaces/longueurs. */
@@ -20,7 +20,38 @@ export function lineFromCatalog(item: CatalogItem): QuoteLine {
     wastePercent: item.wastePercent,
     thicknessCm: item.thicknessCm,
     unitPrice: item.unitPrice,
+    unitCost: item.costPrice,
   };
+}
+
+/** Lignes d'un modèle de devis. Les prestations absentes du catalogue sont signalées, pas inventées. */
+export function linesFromTemplate(template: QuoteTemplate, catalog: CatalogItem[]): { lines: QuoteLine[]; missing: string[] } {
+  const norm = (s: string) => s.trim().toLowerCase();
+  const lines: QuoteLine[] = template.lines.map((l) => ({ ...l, id: uid() }));
+  const missing: string[] = [];
+  for (const it of template.items) {
+    const item = catalog.find((c) => norm(c.label) === norm(it.label));
+    if (!item) {
+      missing.push(it.label);
+      continue;
+    }
+    const line = lineFromCatalog(item);
+    if (it.quantity !== null) {
+      line.measureRef = { type: 'manual' };
+      line.manualQuantity = it.quantity;
+    }
+    lines.push(line);
+  }
+  return { lines, missing };
+}
+
+/** Transforme les lignes d'un devis en lignes de modèle réutilisables. */
+export function templateLinesFrom(lines: QuoteLine[]): Omit<QuoteLine, 'id'>[] {
+  return lines.map(({ id: _id, ...l }) => ({
+    ...l,
+    // les zones et longueurs sont propres à un chantier : on revient au total du chantier
+    measureRef: l.measureRef.type === 'zone' || l.measureRef.type === 'linear' ? { type: 'total' } : l.measureRef,
+  }));
 }
 
 export function blankLine(): QuoteLine {
@@ -37,5 +68,6 @@ export function blankLine(): QuoteLine {
     wastePercent: 0,
     thicknessCm: null,
     unitPrice: 0,
+    unitCost: 0,
   };
 }

@@ -63,7 +63,7 @@ export function CatalogPicker({
       {catalog.length === 0 ? (
         <div className="space-y-3 text-muted">
           <p>Votre catalogue est vide.</p>
-          <ButtonLink to="/settings/catalog" variant="soft">
+          <ButtonLink to="/catalog" variant="soft">
             Créer mes prestations
           </ButtonLink>
         </div>

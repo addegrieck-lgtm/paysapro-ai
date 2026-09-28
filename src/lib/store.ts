@@ -1,18 +1,22 @@
 // État applicatif en mémoire, synchronisé avec le StorageProvider.
 // Les écritures sont optimistes : l'interface se met à jour immédiatement, puis la donnée est persistée.
 import { useSyncExternalStore } from 'react';
-import type { ActivityEvent, AppSettings, CatalogItem, Client, PhotoMeta, Project, Quote } from '../types';
-import { storage } from '../services/storage';
-import { defaultCatalog, defaultSettings } from '../data/defaults';
+import type { ActivityEvent, AppSettings, CatalogItem, Client, PhotoMeta, Project, Quote, QuoteTemplate, User } from '../types';
+import { isDemoSpace, storage } from '../services/storage';
+import { builtInTemplates, defaultCatalog, defaultSettings } from '../data/defaults';
+import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings, needsMigration } from '../features/migrations';
 
 export interface AppState {
   ready: boolean;
   loadError: string | null;
+  demo: boolean;
+  user: User | null;
   settings: AppSettings;
   clients: Client[];
   projects: Project[];
   quotes: Quote[];
   catalog: CatalogItem[];
+  templates: QuoteTemplate[];
   photos: PhotoMeta[];
   activity: ActivityEvent[];
 }
@@ -20,11 +24,14 @@ export interface AppState {
 let state: AppState = {
   ready: false,
   loadError: null,
+  demo: false,
+  user: null,
   settings: defaultSettings(),
   clients: [],
   projects: [],
   quotes: [],
   catalog: [],
+  templates: [],
   photos: [],
   activity: [],
 };
@@ -66,7 +73,7 @@ export async function persist(task: () => Promise<unknown>): Promise<boolean> {
     errorHandler(
       quota
         ? "L'espace de stockage de l'appareil est plein. Exportez vos données puis supprimez d'anciennes photos."
-        : "L'enregistrement a échoué. Vos dernières modifications n'ont peut-être pas été sauvegardées.",
+        : 'Impossible d’enregistrer. Réessayez.',
     );
     return false;
   }
@@ -84,31 +91,45 @@ export function without<T extends { id: string }>(list: T[], id: string): T[] {
   return list.filter((x) => x.id !== id);
 }
 
-/** Chargement initial (au démarrage). Crée les réglages et le catalogue par défaut au premier lancement. */
+/**
+ * Chargement initial. Crée les réglages, le catalogue et les modèles au premier lancement,
+ * et met à niveau les données d'une version précédente (migration sans perte).
+ */
 export async function loadAll(): Promise<void> {
   try {
-    let settings = await storage.getSettings();
-    if (!settings) {
-      settings = defaultSettings();
-      await storage.saveSettings(settings);
-    } else {
-      // fusion : un réglage ajouté dans une nouvelle version reçoit sa valeur par défaut
-      const d = defaultSettings();
-      settings = { ...d, ...settings, company: { ...d.company, ...settings.company } };
-    }
-    let catalog = await storage.getCatalog();
+    const rawSettings = await storage.getSettings();
+    const migrate = needsMigration(rawSettings);
+    const settings = migrateSettings(rawSettings);
+    if (!rawSettings || migrate) await storage.saveSettings(settings);
+
+    let catalog = (await storage.getCatalog()).map((c) => migrateCatalogItem(c, settings.defaultMarginPercent));
     if (catalog.length === 0 && !settings.onboardingDone) {
       catalog = defaultCatalog();
       await Promise.all(catalog.map((c) => storage.saveCatalogItem(c)));
+    } else if (migrate) {
+      await Promise.all(catalog.map((c) => storage.saveCatalogItem(c)));
     }
-    const [clients, projects, quotes, photos, activity] = await Promise.all([
+
+    let templates = await storage.getTemplates();
+    if (templates.length === 0 && (!rawSettings || migrate)) {
+      templates = builtInTemplates();
+      await Promise.all(templates.map((t) => storage.saveTemplate(t)));
+    }
+
+    const [clients, rawProjects, rawQuotes, photos, activity, user] = await Promise.all([
       storage.getClients(),
       storage.getProjects(),
       storage.getQuotes(),
       storage.getPhotoMetas(),
       storage.getActivity(),
+      storage.getUser(),
     ]);
-    setState({ ready: true, settings, clients, projects, quotes, catalog, photos, activity });
+    const projects = rawProjects.map(migrateProject);
+    const quotes = rawQuotes.map(migrateQuote);
+    if (migrate) {
+      await Promise.all([...projects.map((p) => storage.saveProject(p)), ...quotes.map((q) => storage.saveQuote(q))]);
+    }
+    setState({ ready: true, loadError: null, demo: isDemoSpace(), user, settings, clients, projects, quotes, catalog, templates, photos, activity });
   } catch (e) {
     console.error(e);
     setState({

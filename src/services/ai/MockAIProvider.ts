@@ -37,6 +37,10 @@ export class MockAIProvider implements AIProvider {
     return this.local.generateDescription(ctx, elements);
   }
 
+  generateQuoteDescription(ctx: ProjectContext, lineLabels: string[]) {
+    return this.local.generateQuoteDescription(ctx, lineLabels);
+  }
+
   async generateVisualization(): Promise<VisualizationResult> {
     return { available: false, message: 'Aucune image n’est générée en mode démonstration.' };
   }

@@ -9,6 +9,8 @@ import { Checkbox, Chip, SelectField, TextField } from '../../components/ui/Form
 import { Alert, Dialog, EmptyState, useToast } from '../../components/ui/Feedback';
 import { PhotoThumb } from '../../components/PhotoThumb';
 import { NotFoundPage } from '../NotFoundPage';
+import { QuoteFlowBar } from '../../components/QuoteFlowBar';
+import { BeforeAfterSlider } from '../../components/BeforeAfter';
 import { addPhotos, deletePhoto, updatePhoto } from '../../features/projects/actions';
 import { updateQuote } from '../../features/quotes/actions';
 import { PHOTO_TAGS, photoTagLabel } from '../../features/projects/status';
@@ -48,6 +50,9 @@ export function PhotosPage() {
   };
 
   const open = photos.find((p) => p.id === openId);
+  const firstBefore = photos.find((p) => p.tag === 'before' || p.tag === 'overview');
+  const lastAfter = [...photos].reverse().find((p) => p.tag === 'after');
+  const beforeAfter = firstBefore && lastAfter ? { before: firstBefore.id, after: lastAfter.id } : null;
   const groups: { title: string; tags: PhotoTag[] }[] = [
     { title: 'Avant / état des lieux', tags: ['before', 'overview', 'zone', 'detail'] },
     { title: 'Pendant les travaux', tags: ['during'] },
@@ -57,6 +62,7 @@ export function PhotosPage() {
   return (
     <div className="space-y-5">
       <PageHeader back={`/projects/${project.id}`} title="Photos du chantier" subtitle={clientDisplayName(client)} />
+      <QuoteFlowBar current="site" projectId={project.id} quote={quote} />
 
       <Card>
         <p className="mb-2 text-sm font-medium">Type des prochaines photos</p>
@@ -121,6 +127,13 @@ export function PhotosPage() {
             </Card>
           );
         })
+      )}
+
+      {beforeAfter && (
+        <Card>
+          <CardTitle>Avant / après</CardTitle>
+          <BeforeAfterSlider beforeId={beforeAfter.before} afterId={beforeAfter.after} />
+        </Card>
       )}
 
       <StickyActions>

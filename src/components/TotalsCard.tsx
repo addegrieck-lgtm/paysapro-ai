@@ -1,61 +1,79 @@
-import type { QuoteTotals } from '../features/quotes/pricing';
-import { kindLabel } from '../features/catalog/units';
+import { useState } from 'react';
+import { Lock } from 'lucide-react';
+import { GROUP_LABEL, type PriceGroup, type QuoteTotals } from '../features/quotes/pricing';
 import { formatMoney, formatPercent } from '../utils/number';
-import type { LineKind } from '../types';
 import { Card, CardTitle } from './ui/Card';
+import { Button } from './ui/Button';
 import { NumberField } from './ui/Form';
 import { Alert } from './ui/Feedback';
 
-/** Estimation financière : coût estimé, marge, prix de vente, TVA, TTC, acompte. */
+/**
+ * Récapitulatif des prix : ce que verra le client (HT, TVA, TTC, acompte)
+ * + un encadré « visible uniquement par vous » avec coût et marge.
+ */
 export function TotalsCard({
   totals,
   vatExempt,
-  onMarginChange,
   locked,
+  defaultMargin,
+  onApplyMargin,
 }: {
   totals: QuoteTotals;
   vatExempt: boolean;
-  onMarginChange?: (v: number) => void;
   locked?: boolean;
+  defaultMargin: number;
+  onApplyMargin?: (percent: number) => void;
 }) {
-  const kinds = Object.entries(totals.costByKind) as [LineKind, number][];
+  const [margin, setMargin] = useState<number | null>(defaultMargin);
+  const groups = (Object.keys(totals.saleByGroup) as PriceGroup[]).filter((g) => totals.saleByGroup[g] > 0);
+
   return (
     <Card>
-      <CardTitle>Estimation du chantier</CardTitle>
-      {kinds.length > 0 && (
-        <dl className="mb-3 space-y-1 text-sm">
-          {kinds.map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-3">
-              <dt className="text-muted">{kindLabel(k)}</dt>
-              <dd className="tabular-nums">{formatMoney(v)}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
-      <div className="space-y-2 border-t border-line pt-3">
-        <Line label="Coût estimé" value={formatMoney(totals.costTotal)} strong />
-        {onMarginChange && !locked ? (
-          <div className="flex items-end justify-between gap-3">
-            <NumberField label="Marge" suffix="%" value={totals.marginPercent} max={100} onChange={(v) => onMarginChange(v ?? 0)} className="w-32" />
-            <div className="pb-3 text-right tabular-nums text-muted">+ {formatMoney(totals.marginAmount)}</div>
-          </div>
-        ) : (
-          <Line label={`Marge (${formatPercent(totals.marginPercent)})`} value={formatMoney(totals.marginAmount)} />
-        )}
-        <Line label="Prix de vente HT" value={formatMoney(totals.totalHT)} strong />
+      <CardTitle>Prix</CardTitle>
+      <dl className="space-y-1.5">
+        {groups.map((g) => (
+          <Line key={g} label={GROUP_LABEL[g]} value={formatMoney(totals.saleByGroup[g])} />
+        ))}
+        <div className="border-t border-line pt-2">
+          <Line label="Total HT" value={formatMoney(totals.totalHT)} strong />
+        </div>
         {vatExempt ? (
           <p className="text-sm text-muted">TVA non applicable (art. 293 B du CGI)</p>
         ) : (
           <Line label={`TVA ${formatPercent(totals.vatRate)}`} value={formatMoney(totals.vatAmount)} />
         )}
         <div className="flex items-baseline justify-between gap-3 rounded-xl bg-brand px-4 py-3 text-on-brand">
-          <span className="font-semibold">Total TTC</span>
-          <span className="text-2xl font-bold tabular-nums">{formatMoney(totals.totalTTC)}</span>
+          <dt className="font-semibold">Total TTC</dt>
+          <dd className="text-2xl font-bold tabular-nums">{formatMoney(totals.totalTTC)}</dd>
         </div>
-        {totals.depositPercent > 0 && (
-          <Line label={`Acompte (${formatPercent(totals.depositPercent)})`} value={formatMoney(totals.depositAmount)} />
+        {totals.depositPercent > 0 && <Line label={`Acompte (${formatPercent(totals.depositPercent)})`} value={formatMoney(totals.depositAmount)} />}
+      </dl>
+
+      <div className="mt-4 rounded-xl border border-dashed border-line bg-surface-2/60 p-4">
+        <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
+          <Lock className="h-3.5 w-3.5" aria-hidden /> Visible uniquement par vous
+        </p>
+        <dl className="space-y-1.5">
+          <Line label="Coût estimé" value={formatMoney(totals.costTotal)} />
+          <Line label="Prix de vente HT" value={formatMoney(totals.totalHT)} />
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="font-semibold text-ink">Marge</dt>
+            <dd className={`font-bold tabular-nums ${totals.marginAmount < 0 ? 'text-danger' : 'text-success'}`}>
+              {formatMoney(totals.marginAmount)} <span className="text-sm font-medium text-muted">({formatPercent(totals.marginRate)} du HT)</span>
+            </dd>
+          </div>
+        </dl>
+        {totals.marginAmount < 0 && <p className="mt-2 text-sm text-danger">Attention : vos prix de vente sont inférieurs à vos coûts.</p>}
+        {onApplyMargin && !locked && (
+          <div className="mt-3 flex items-end gap-2">
+            <NumberField label="Marge sur coûts" suffix="%" max={100} value={margin} onChange={setMargin} className="w-36" />
+            <Button variant="soft" disabled={margin === null} onClick={() => margin !== null && onApplyMargin(margin)} className="mb-0">
+              Appliquer aux prix
+            </Button>
+          </div>
         )}
       </div>
+
       {totals.missingCount > 0 && (
         <div className="mt-3">
           <Alert tone="warning">
@@ -75,8 +93,8 @@ export function TotalsCard({
 function Line({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className={strong ? 'font-semibold text-ink' : 'text-muted'}>{label}</span>
-      <span className={`tabular-nums ${strong ? 'font-semibold text-ink' : ''}`}>{value}</span>
+      <dt className={strong ? 'font-semibold text-ink' : 'text-muted'}>{label}</dt>
+      <dd className={`tabular-nums ${strong ? 'font-semibold text-ink' : ''}`}>{value}</dd>
     </div>
   );
 }

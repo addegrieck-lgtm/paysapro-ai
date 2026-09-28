@@ -9,7 +9,7 @@ export function Card({ children, className = '' }: { children: ReactNode; classN
 
 export function CardTitle({ children, action, icon }: { children: ReactNode; action?: ReactNode; icon?: ReactNode }) {
   return (
-    <div className="mb-3 flex items-center justify-between gap-3">
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
         {icon && <span className="text-brand">{icon}</span>}
         {children}

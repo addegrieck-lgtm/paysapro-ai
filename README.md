@@ -1,316 +1,267 @@
-# 🌿 Paysapro AI
+# 🌿 Paysapro AI — v0.1 Bêta
 
-**Devis et gestion de chantiers pour paysagistes.**
+**Le devis paysagiste, directement depuis le chantier.**
+*Photographiez. Chiffrez. Envoyez. Faites signer.*
 
-Une application web installable sur téléphone (PWA). Elle transforme une visite chez le client en devis professionnel signé, puis en chantier suivi :
+Paysapro AI est une application web installable sur téléphone (PWA). Elle permet aux paysagistes, jardiniers et entreprises d’aménagement extérieur de transformer une visite chez le client en devis professionnel signé, puis en chantier suivi.
 
 ```
-Photos → Client → Mesures → Surfaces → Prestations (catalogue) → Estimation
-→ Devis → PDF → Présentation au client → Signature → Acompte → Suivi du chantier
+Chantier → Photos → Mesures → Prix → Devis (PDF) → Présentation au client → Signature → Suivi du chantier
 ```
 
-- **0 € obligatoire** : aucun serveur, aucun abonnement, aucune API payante.
-- **100 % locale** : les données restent sur l'appareil (IndexedDB) et l'application fonctionne **hors-ligne**.
-- **Mobile d'abord** : gros boutons, utilisable d'une main, installable sur iPhone et Android.
+- **0 € obligatoire** : GitHub Pages, aucun serveur, aucune API payante.
+- **Bêta : Premium Max gratuit pour tous** (`testMode`), sans paiement ni abonnement.
+- **Local et hors-ligne** : les données restent sur l’appareil (IndexedDB).
+- **Prête pour le cloud** : chaque service externe se branche derrière une interface (voir [docs/MIGRATION-SUPABASE.md](docs/MIGRATION-SUPABASE.md)).
+
+En ligne : **https://addegrieck-lgtm.github.io/paysapro-ai/**
 
 ---
 
 ## Sommaire
 
 1. [Fonctionnalités](#1-fonctionnalités)
-2. [Installation sur votre ordinateur](#2-installation-sur-votre-ordinateur)
-3. [Commandes](#3-commandes)
-4. [Comment mettre gratuitement l'application en ligne](#4-comment-mettre-gratuitement-lapplication-en-ligne)
-5. [Installer l'application sur un téléphone (PWA)](#5-installer-lapplication-sur-un-téléphone-pwa)
-6. [Stockage des données](#6-stockage-des-données)
-7. [Intelligence artificielle](#7-intelligence-artificielle)
-8. [Limites de GitHub Pages et de cette version](#8-limites-de-github-pages-et-de-cette-version)
-9. [Architecture](#9-architecture)
-10. [Évolution future](#10-évolution-future)
+2. [Installation et développement](#2-installation-et-développement)
+3. [Mise en ligne gratuite (GitHub Pages)](#3-mise-en-ligne-gratuite-github-pages)
+4. [PWA : installation sur téléphone et hors-ligne](#4-pwa--installation-sur-téléphone-et-hors-ligne)
+5. [Mode bêta, Premium Max et plans](#5-mode-bêta-premium-max-et-plans)
+6. [Stockage et données](#6-stockage-et-données)
+7. [Providers : IA, paiement, signature, analytics, compte](#7-providers--ia-paiement-signature-analytics-compte)
+8. [Architecture](#8-architecture)
+9. [Tests](#9-tests)
+10. [Limites de la bêta](#10-limites-de-la-bêta)
+11. [Avant le lancement commercial](#11-avant-le-lancement-commercial)
 
 ---
 
 ## 1. Fonctionnalités
 
-| Domaine | Ce qui est disponible |
+### Site public
+
+| Page | Contenu |
 |---|---|
-| **Tableau de bord** | Nombre de devis, montant total, devis acceptés, montant signé, chantiers en cours, montant encaissé, taux de transformation. Tout est calculé à partir de vos vraies données. Alertes « à suivre » et activité récente. |
-| **Chantiers** | Création en 2 étapes (client, types de projet à choix multiples), recherche, filtres, timeline d'avancement avec bouton « Continuer ». |
-| **Clients** | Fiche, chantiers, devis, montants, historique. Appel et e-mail en un geste. |
-| **Photos** | « Prendre une photo » (appareil photo) ou importer plusieurs photos. Étiquettes Avant / Zone concernée / Vue générale / Élément particulier / Pendant / Après. Description. Choix des photos affichées dans le devis. Compression automatique : vignette et qualité moyenne. |
-| **Mesures** | Plusieurs zones (rectangle, triangle, cercle, surface connue), zones à déduire, longueurs (bordures, clôtures, haies). Calcul automatique, par exemple 12 m × 8 m = 96 m². Mode **précis** ou mode **rapide** (mesures approximatives, marquées « à confirmer »). |
-| **Calculateurs** | Gazon (+ pertes), terre (volume), gravier (volume et poids), bordures, clôture (panneaux et poteaux), terrasse, plantation, main-d'œuvre. |
-| **Catalogue** | 22 prestations types modifiables : ajouter, modifier, dupliquer, supprimer. Unités m², m, ml, m³, unité, forfait, heure, jour. Pertes en %, épaisseur par défaut. |
-| **Estimation** | Les quantités sont calculées depuis les mesures (surface totale, zone précise, longueur, volume = surface × épaisseur). Détail par catégorie, coût estimé, marge modifiable, prix de vente, TVA, TTC, acompte. **Une donnée manquante est signalée, jamais inventée.** |
-| **Assistant** | « Analyser le chantier » propose des prestations. Pour chacune : la raison (« Pourquoi ? ») et la confiance (faible, moyenne, élevée). Chaque proposition doit être cochée par le professionnel. |
-| **Devis** | Numérotation `2026-001`, logo, SIRET, TVA (ou « TVA non applicable, art. 293 B du CGI »), photos, conditions, IBAN, validité, acompte et solde. Aperçu professionnel. |
-| **PDF** | Généré dans le navigateur, nommé `DEVIS-2026-001.pdf`. Partage natif (e-mail, WhatsApp…) ou téléchargement. |
-| **Page client** | Écran dédié, sans le menu de l'application : « Votre projet paysager », total, photos, prestations, bouton « Accepter le devis ». |
-| **Signature** | Signature au doigt, bouton « Effacer et recommencer », case « Je confirme accepter le devis ». Sont enregistrés : nom, date, heure et empreinte SHA-256 du devis. |
-| **Acompte** | Montant et statut (en attente ou reçu). Le professionnel enregistre les paiements reçus : virement, chèque, espèces… |
-| **Suivi de chantier** | Étapes Planifié, En préparation, En cours, En attente, Terminé, Archivé. Dates, checklist modifiable, paiements, galerie avant / pendant / après, notes. |
-| **Relances** | Modèles de messages (envoi, relance, expiration, début des travaux), modifiables. Copier, partager, e-mail ou SMS. |
-| **Visualiser le projet** | Choix des éléments (gazon, terrasse, olivier, éclairage…), puis génération d'une description de la transformation, réutilisable dans le devis. |
-| **Paramètres** | Entreprise, catalogue, TVA et devis, données, IA, apparence (thème clair ou sombre, grand texte), confidentialité, à propos. |
-| **Données** | Export et import JSON (photos comprises), données de démonstration, suppression totale avec confirmation forte. |
-| **Première ouverture** | 5 étapes rapides, avec « Passer pour l'instant ». |
+| `/` Landing | Proposition de valeur, parcours animé Photo → Chiffrage → Devis → Client → Signature, « Comment ça marche », section IA (« L’IA vous assiste. Vous gardez toujours le contrôle »), « Pourquoi Paysapro AI », bêta, FAQ, bouton « Explorer la démo » |
+| `/pricing` | Bêta 0 €/mois, accès Premium Max ; offres futures « À venir », sans prix inventé |
+| `/beta` | Programme bêta et formulaire d’inscription (11 champs, validation) |
+| `/contact` | Formulaire « Une question ? » |
+| `/privacy`, `/legal`, `/terms`, `/cookies` | Modèles à adapter, clairement signalés comme tels |
+
+### Application professionnelle
+
+| Fonction | Détail |
+|---|---|
+| **Onboarding** | 6 écrans : bienvenue ; entreprise (prénom, nom, entreprise, téléphone, e-mail, adresse, logo) ; activités ; prestations principales ; objectif ; « Votre espace est prêt ». Possibilité de passer. |
+| **Tableau de bord** | « Bonjour [Prénom] », bouton **+ Nouveau devis**, actions rapides, brouillon à reprendre, « Votre activité » (devis du mois, acceptés, montant, chantiers en cours), premiers pas, alertes, chantiers récents, activité récente |
+| **Nouveau devis** | Parcours guidé Client → Chantier → Mesures → Prix → Devis → Envoi, avec barre de progression. Retour possible sans perte. Brouillon enregistré automatiquement ; s’il est interrompu, il est restauré avec le message « Votre brouillon a été sauvegardé ». Départ possible depuis un modèle. |
+| **Photos** | Prise de vue ou import multiple, étiquettes (avant, après…), compression, choix des photos affichées dans le devis, **curseur avant / après** |
+| **Mesures** | Zones (rectangle, triangle, cercle, surface connue), zones à déduire, longueurs, mode précis ou rapide (quantités marquées « à confirmer ») |
+| **Prix** | Chaque ligne a un **prix de vente** et un **coût interne**. Quantités calculées depuis les mesures (80 m² × 12 € = 960 €). Totaux par famille : matériaux, main-d’œuvre, autres. Encadré « visible uniquement par vous » : coût, marge en € et en %, outil « appliquer une marge ». Main-d’œuvre à l’heure ou à la journée. |
+| **Assistant** | « ✨ Analyser le chantier » : chaque suggestion indique pourquoi et avec quelle confiance, et le pro choisit « Ajouter au devis » ou « Ignorer ». « Générer la description » rédige un texte modifiable. |
+| **Modèles de devis** | 5 modèles fournis (pelouse, terrasse, clôture, plantation, entretien) ; « Enregistrer ces prestations comme modèle » |
+| **Catalogue** | Prix d’achat, prix de vente et marge par prestation ; créer, modifier, dupliquer, supprimer ; recherche |
+| **Devis et PDF** | Logo, **couleur de l’entreprise**, pied de page, client, chantier, numéro, date, validité, photos, prestations, TVA (ou mention art. 293 B), total, acompte, conditions, signature. PDF `DEVIS-2026-001.pdf`. |
+| **Espace client** (`/quote/:token`) | « Votre projet avec [Entreprise] », total, photos, devis, **Accepter le devis**, grande zone de signature (Effacer / Valider), page « Merci ! Votre devis a bien été signé », acompte |
+| **Statuts automatiques** | Brouillon → Envoyé → Vu → Accepté → Signé, puis Planifié → En cours → Terminé |
+| **Notifications** | Cloche avec badge. Événements : devis signé (« 🎉 Jean Dupont vient de signer le devis #2026-001 »), devis vu, chantier terminé, nouveau client. Alertes : devis bientôt expiré, chantier qui commence. Chaque type se règle dans les préférences. |
+| **Chantiers** | Timeline, **notes internes 🔒**, suivi des travaux, checklist, paiements reçus, galerie avant/après |
+| **Clients (CRM)** | Informations, chantiers, devis, montants, historique, dernière activité |
+| **Planning** | En cours, à venir, à planifier, terminés |
+| **Statistiques** | Devis émis et signés, taux de transformation, devis moyen, montant signé par mois, marge des devis signés, progression (entonnoir) |
+| **Paramètres** | Compte, Entreprise, Devis, Catalogue, Notifications, Données, Assistant IA, Apparence, Bêta, Aide, Confidentialité, À propos |
+| **Bêta** | Page « Programme bêta » (plan Premium Max gratuit), fenêtre de feedback (1 à 5 étoiles + 4 questions), inscriptions reçues sur l’appareil exportables en CSV |
+| **Démo** | Espace **séparé** avec entreprise, clients, chantiers, devis et photos fictifs ; boutons « Quitter la démo » et « Réinitialiser » |
+| **Données** | Télécharger une sauvegarde (JSON, photos comprises), import, suppression totale (il faut taper « SUPPRIMER ») |
+
+**Navigation**
+- **Mobile** : barre du bas (Accueil, Clients, **+**, Chantiers, Devis, Plus). Le **+** propose : Nouveau devis, client, chantier ou photo.
+- **Ordinateur** : barre latérale (Dashboard, Clients, Chantiers, Devis, Catalogue, Planning, Statistiques, Entreprise, Paramètres).
 
 ---
 
-## 2. Installation sur votre ordinateur
+## 2. Installation et développement
 
-1. **Installer Node.js** (gratuit) : https://nodejs.org → version « LTS ». Vérifiez dans un terminal :
-   ```bash
-   node -v
-   ```
-   Vous devez voir `v20` ou plus.
-2. **Ouvrir un terminal dans le dossier du projet**, puis installer les dépendances :
-   ```bash
-   npm install
-   ```
-3. **Lancer l'application en mode développement** :
-   ```bash
-   npm run dev
-   ```
-   Ouvrez l'adresse affichée (par exemple http://localhost:5173). Sur votre téléphone connecté au même Wi-Fi, utilisez l'adresse « Network ».
+Prérequis : [Node.js](https://nodejs.org) 20 ou plus (version LTS).
 
-> Astuce : dans l'application, **Plus → Données → Charger des données de démonstration** pour tester immédiatement.
+```bash
+npm install
+```
 
----
-
-## 3. Commandes
+```bash
+npm run dev
+```
 
 | Commande | Rôle |
 |---|---|
-| `npm install` | Installe les dépendances (une fois). |
-| `npm run dev` | Lance l'application en développement. |
-| `npm run build` | Vérifie TypeScript puis crée la version de production dans `dist/`. |
-| `npm run preview` | Sert la version de production en local (service worker et hors-ligne actifs). |
-| `npm run lint` | Vérifie la qualité du code (ESLint). |
-| `npm run test` | Lance les tests automatiques (Vitest). |
-| `npm run icons` | Régénère les icônes PNG de l'application. |
+| `npm run dev` | Serveur de développement |
+| `npm run build` | Vérification TypeScript + build de production dans `dist/` |
+| `npm run preview` | Sert le build (service worker et hors-ligne actifs) |
+| `npm run lint` | ESLint |
+| `npm run test` | Tests Vitest |
+| `npm run icons` | Régénère les icônes PWA |
+
+**Configuration (facultative)** : copiez `.env.example` en `.env.local`. Aucune variable n’est obligatoire. **Ne mettez jamais de secret** dans une variable `VITE_*` : elle serait visible dans le navigateur.
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `VITE_TEST_MODE` | `true` | Premium Max pour tous |
+| `VITE_DEMO_MODE` | `false` | Ouvre directement l’espace démo (salon, démonstration) |
+| `VITE_AI_DEMO_MODE` | `false` | Assistant en mode démonstration par défaut |
+| `VITE_CONTACT_EMAIL` | vide | Adresse publique à qui les visiteurs envoient leur inscription bêta ou leur message, via un e-mail pré-rempli |
 
 ---
 
-## 4. Comment mettre gratuitement l'application en ligne
+## 3. Mise en ligne gratuite (GitHub Pages)
 
-Résultat : votre application sera accessible à l'adresse `https://MONCOMPTE.github.io/MONREPOSITORY/`, sans serveur à payer ni nom de domaine à acheter.
+Le dépôt contient `.github/workflows/deploy.yml`. À chaque `git push` sur `main`, GitHub installe, lance lint et tests, construit puis publie le site.
 
-### Étape 1 : créer un compte et un dépôt GitHub
+1. Créez un dépôt **public** sur GitHub.
+2. Envoyez le code :
 
-1. Créez un compte gratuit sur https://github.com.
-2. Cliquez sur **New repository** (bouton « + » en haut à droite).
-3. Nom : par exemple `paysapro-ai`. Visibilité : **Public**. GitHub Pages est gratuit pour les dépôts publics. Vos données clients ne sont **pas** dans le dépôt : elles restent sur votre téléphone.
-4. Ne cochez **rien** d'autre (pas de README ni de .gitignore), puis cliquez sur **Create repository**.
+   ```bash
+   git init
+   ```
 
-### Étape 2 : installer Git
+   ```bash
+   git add .
+   ```
 
-Téléchargez Git sur https://git-scm.com, puis configurez-le une fois :
+   ```bash
+   git commit -m "Paysapro AI"
+   ```
 
-```bash
-git config --global user.name "Votre Nom"
-```
+   ```bash
+   git branch -M main
+   ```
 
-```bash
-git config --global user.email "vous@exemple.fr"
-```
+   ```bash
+   git remote add origin https://github.com/MONCOMPTE/MONREPOSITORY.git
+   ```
 
-### Étape 3 : envoyer le code sur GitHub
+   ```bash
+   git push -u origin main
+   ```
 
-Dans un terminal ouvert dans le dossier du projet :
+3. **Settings → Pages → Source : « GitHub Actions »**.
+4. Si le premier déploiement a échoué parce que Pages n’était pas encore activé : **Actions → Deploy → Re-run jobs**.
+5. Ouvrez `https://MONCOMPTE.github.io/MONREPOSITORY/`.
 
-```bash
-git init
-```
-
-```bash
-git add .
-```
-
-```bash
-git commit -m "Première version de Paysapro AI"
-```
-
-```bash
-git branch -M main
-```
-
-Remplacez `MONCOMPTE` et `MONREPOSITORY` par les vôtres :
-
-```bash
-git remote add origin https://github.com/MONCOMPTE/MONREPOSITORY.git
-```
-
-```bash
-git push -u origin main
-```
-
-La première fois, Git vous demande de vous connecter à GitHub : une fenêtre de navigateur s'ouvre.
-
-### Étape 4 : activer GitHub Pages
-
-1. Sur la page de votre dépôt : **Settings** → **Pages** (menu de gauche).
-2. Sous « Build and deployment », à la ligne **Source**, choisissez **GitHub Actions**.
-3. Ouvrez l'onglet **Actions** du dépôt. Le workflow **Deploy** se lance, ou relancez-le avec « Run workflow ». Il installe, vérifie (lint et tests), construit puis publie l'application en 1 à 2 minutes.
-
-### Étape 5 : ouvrir l'application
-
-Rendez-vous sur `https://MONCOMPTE.github.io/MONREPOSITORY/` 🎉
-
-### Mettre à jour l'application ensuite
-
-Après chaque modification, envoyez-la sur GitHub : le site se met à jour automatiquement.
-
-```bash
-git add .
-```
-
-```bash
-git commit -m "Description de la modification"
-```
-
-```bash
-git push
-```
-
-> Rien n'est à configurer pour le sous-dossier `/MONREPOSITORY/`. L'application utilise des chemins relatifs (`base: './'`) et des adresses du type `/#/projects`, qui fonctionnent sur GitHub Pages sans règle serveur.
+Routage : `HashRouter` (URL du type `/#/app`) et chemins relatifs (`base: './'`). Aucune configuration serveur n’est nécessaire, et l’application fonctionne dans n’importe quel sous-dossier.
 
 ---
 
-## 5. Installer l'application sur un téléphone (PWA)
+## 4. PWA : installation sur téléphone et hors-ligne
 
-- **iPhone ou iPad** : ouvrez l'adresse dans **Safari**, touchez **Partager** puis **Sur l'écran d'accueil**.
-- **Android** : ouvrez l'adresse dans **Chrome**, menu **⋮** puis **Installer l'application**.
-- **Ordinateur** (Chrome, Edge) : cliquez sur l'icône d'installation dans la barre d'adresse.
-
-Après une première ouverture avec du réseau, l'application fonctionne **sans connexion** : consulter, créer un chantier, ajouter des photos, créer et modifier un devis, faire signer.
-
----
-
-## 6. Stockage des données
-
-- Toutes les données (clients, chantiers, devis, photos, catalogue, réglages) sont stockées dans **IndexedDB**, le stockage du navigateur. Elles restent après la fermeture du navigateur.
-- Elles **ne quittent jamais l'appareil**. Il n'y a ni compte, ni cloud, ni cookie de suivi.
-- ⚠️ **Il n'y a pas de synchronisation.** Un téléphone et un ordinateur ont chacun leurs propres données. Si le navigateur est désinstallé ou ses données effacées, tout est perdu. **Exportez régulièrement une sauvegarde** : Plus → Données → Exporter (fichier JSON, photos comprises), et gardez-la en lieu sûr.
-- Les photos sont compressées avant stockage : vignette de 360 px, qualité moyenne de 1600 px. L'original n'est pas conservé, pour économiser l'espace du téléphone.
-- L'application demande au navigateur un stockage « persistant » pour limiter les effacements automatiques.
-
-**Confidentialité (RGPD)** : une politique de confidentialité est intégrée (Plus → Confidentialité), avec l'export et la suppression complète des données. Aucune photo n'est jamais envoyée à un service externe. Si un tel service est ajouté plus tard, un consentement explicite sera demandé.
+- **iPhone (Safari)** : Partager → « Sur l’écran d’accueil ».
+- **Android (Chrome)** : ⋮ → « Installer l’application ».
+- `manifest.webmanifest` : `start_url` = `./#/app`, icônes 192, 512 et maskable, icône Apple.
+- Service worker (vite-plugin-pwa / Workbox) : tous les écrans sont mis en cache. Après une première visite, l’application s’ouvre **sans réseau**.
 
 ---
 
-## 7. Intelligence artificielle
+## 5. Mode bêta, Premium Max et plans
 
-L'application **fonctionne sans aucune IA externe**. Deux modes sont disponibles (Plus → IA) :
+```ts
+// src/config/app.ts
+export const APP_CONFIG = {
+  testMode: true,            // VITE_TEST_MODE
+  testPlan: 'PREMIUM_MAX',
+  paymentsEnabled: false,
+  subscriptionsEnabled: false,
+  // …
+};
+```
 
-| Mode | Description |
-|---|---|
-| **Assistant local** (par défaut) | Règles métier transparentes, hors-ligne. Il propose des prestations selon les types de projet, les mots de la description (« olivier », « gravier », « haie »…) et vos mesures. Il indique pourquoi et avec quelle confiance. Il ne prétend pas « voir » les photos. |
-| **Simulation / démonstration** | Réponses fictives pour découvrir l'interface, dont une analyse de photo simulée. Un bandeau signale en permanence que ce sont des résultats fictifs. |
-
-Principes respectés :
-
-- une photo ne remplace jamais une mesure ;
-- une surface estimée est toujours donnée en fourchette (« 72–98 m² ») avec la mention « à confirmer » ;
-- chaque proposition doit être validée par le professionnel ;
-- rien n'est envoyé hors de l'appareil.
-
-**Pourquoi pas d'API d'IA payante dans le code ?** Une clé d'API placée dans un site statique serait visible par tout le monde, qui pourrait l'utiliser à vos frais. Il faudra un petit serveur intermédiaire : voir la section Évolution.
+`src/features/plans/plans.ts` définit les plans Free (« Starter »), Pro, Premium et Premium Max, avec `getCurrentPlan()`, `hasFeature()` et `canUseFeature()`. **Pendant la bêta, tout le monde reçoit PREMIUM_MAX : aucun paywall.** Les autres plans restent affichés « À venir », sans prix.
 
 ---
 
-## 8. Limites de GitHub Pages et de cette version
+## 6. Stockage et données
 
-GitHub Pages héberge uniquement des **fichiers statiques** : pas de serveur, pas de base de données, pas de secret. Conséquences :
-
-| Limite | Contournement dans le MVP |
-|---|---|
-| Pas de lien public `/quote/ABC123` consultable par le client depuis chez lui | Le client consulte et signe **sur l'appareil du professionnel** (« Présenter au client »), ou reçoit le **PDF** par e-mail ou WhatsApp. La page `/#/quote/:token` existe déjà : elle deviendra publique avec un backend. |
-| Pas de synchronisation entre appareils | Export et import JSON. |
-| Pas de paiement en ligne | Enregistrement manuel des acomptes reçus (virement, chèque…). L'IBAN est affiché au client. |
-| Signature simple, **non qualifiée eIDAS** | Nom, date, heure, image et empreinte SHA-256 du devis sont enregistrés. C'est une validation du devis, pas une signature électronique certifiée. |
-| Pas d'e-mail ni de SMS automatiques | Messages préparés à copier ou partager via vos propres applications. |
-| Pas d'analyse automatique des photos | Surfaces issues de vos mesures (le calcul est exact). |
-| Notifications uniquement dans l'application | Alertes « À suivre » : devis consulté, devis qui expire bientôt, chantier qui commence demain, relance à faire. |
-| Plusieurs onglets ouverts en même temps | Chaque onglet a sa propre copie en mémoire. Utilisez un seul onglet ou l'application installée. |
-
-Tout ce qui n'est pas disponible est affiché comme **« Disponible prochainement »** (bouton désactivé). Aucun bouton n'est factice.
+- **IndexedDB**, via `IndexedDBProvider`. Deux bases distinctes :
+  - `paysapro-ai` : les vraies données ;
+  - `paysapro-demo` : l’espace de démonstration.
+- **Migration automatique** : les données du MVP sont mises à niveau au chargement, sans perte (`src/features/migrations.ts`, testé).
+  - Les anciens prix deviennent des coûts.
+  - Les prix de vente sont recalculés avec la marge d’origine, donc les totaux restent identiques.
+- **Modèle conceptuel** : User → Company (réglages) → Clients → Projects → Quotes, plus Photos, Catalog et Templates. Tout est prêt pour un stockage par utilisateur dans le cloud.
+- **Données publiques** : la page client et le PDF reçoivent uniquement `toPublicQuote()`. Ni coût, ni marge, ni notes internes, ni paiements ; c’est vérifié par un test automatique.
+- **Sauvegarde** : Paramètres → Données → « Télécharger une sauvegarde ».
 
 ---
 
-## 9. Architecture
+## 7. Providers : IA, paiement, signature, analytics, compte
+
+| Interface | Bêta | Plus tard |
+|---|---|---|
+| `StorageProvider` | `IndexedDBProvider` | `CloudStorageProvider` (squelette prêt) |
+| `AuthProvider` | `LocalAuthProvider` : profil sur l’appareil, **aucun mot de passe stocké** | `CloudAuthProvider` (Supabase Auth) |
+| `AIProvider` | `LocalAIProvider` (règles métier), `MockAIProvider` (« Mode démonstration », réponses fictives signalées) | `ExternalAIProvider` via Edge Function ; consentement obligatoire déjà prévu |
+| `PaymentProvider` | `ManualPaymentProvider` (paiements reçus), `MockPaymentProvider` | `StripeProvider` |
+| `SignatureProvider` | `LocalSignatureProvider` : nom, date, image, empreinte SHA-256 | `FutureElectronicSignatureProvider` (eIDAS) |
+| `AnalyticsProvider` | `LocalAnalyticsProvider` : événements sur l’appareil uniquement | fournisseur distant, avec consentement |
+| `BetaLeadProvider` / `ContactProvider` | local, plus e-mail pré-rempli si `VITE_CONTACT_EMAIL` | `SupabaseBetaLeadProvider` |
+
+**Honnêteté de l’IA** : aucune mesure n’est inventée. Toute estimation est indicative, avec sa fourchette. Chaque suggestion est validée par le pro. Le mode démonstration est toujours signalé, et la génération d’image est affichée « disponible prochainement ».
+
+Événements analytics enregistrés en local : `app_opened`, `onboarding_completed`, `client_created`, `project_created`, `quote_created`, `quote_sent`, `quote_viewed`, `quote_signed`, `pdf_generated`, `ai_used`, `beta_form_submitted`, `contact_submitted`, `feedback_submitted`, `demo_opened`.
+
+---
+
+## 8. Architecture
 
 ```
 src/
-├── types/            Types métier stricts (Client, Project, Quote, CatalogItem…)
-├── utils/            Nombres (jamais de NaN), dates, validation, identifiants
-├── data/             Réglages et catalogue par défaut
-├── lib/              État global (store), PWA, partage et téléchargement
-├── hooks/            useProjectData, usePhotoUrl
-├── features/         Logique métier, sans interface
-│   ├── measurements/   geometry.ts (surfaces), calculators.ts (gazon, terre, clôture…)
-│   ├── quotes/         quantity.ts, pricing.ts (marge, TVA, acompte), numbering.ts, actions, PDF
-│   ├── projects/       statuts, timeline, actions (photos, suivi de chantier)
-│   ├── clients/        fiche client
-│   ├── catalog/        unités, catégories, règles de quantité
-│   ├── ai/             contexte envoyé à l'assistant
-│   ├── notifications/  alertes locales calculées
-│   ├── stats/          statistiques du tableau de bord
-│   ├── demo/           données de démonstration
-│   └── settings/       réglages, export/import, suppression
-├── services/         Fournisseurs interchangeables (abstractions)
-│   ├── storage/        StorageProvider → IndexedDBProvider (MVP) · FutureCloudProvider
-│   ├── ai/             AIProvider → LocalAIProvider · MockAIProvider · ExternalAIProvider
-│   ├── payments/       PaymentProvider → ManualPaymentProvider · MockPaymentProvider
-│   ├── signature/      SignatureProvider → LocalSignatureProvider · FutureElectronicSignatureProvider
-│   ├── pdf/            génération du PDF (jsPDF, chargé à la demande)
-│   └── images/         compression des photos, logo
-├── components/       Composants réutilisables (ui/ = design system)
-├── layouts/          Mise en page (navigation inférieure mobile, barre latérale sur ordinateur)
-├── pages/            Écrans
-└── styles/           Design system (Tailwind CSS v4, thèmes clair et sombre)
-tests/                Tests Vitest (calculs, stockage, import/export, IA, signature, PDF)
-.github/workflows/    Déploiement GitHub Pages
+├── config/app.ts        APP_CONFIG (testMode, PREMIUM_MAX, paiements désactivés)
+├── types/               Types métier stricts (User, Client, Project, Quote, CatalogItem, QuoteTemplate…)
+├── data/                Réglages, catalogue (achat/vente), modèles, FAQ
+├── features/            Logique métier pure (testée)
+│   ├── quotes/            quantity, pricing (vente/coût/marge), publicView, numbering, templates, PDF
+│   ├── measurements/      surfaces, calculateurs
+│   ├── plans/             getCurrentPlan, hasFeature, canUseFeature
+│   ├── migrations.ts      mise à niveau des données
+│   ├── notifications/     alertes + centre de notifications
+│   ├── stats/, demo/, projects/, clients/, templates/, settings/
+├── services/            Fournisseurs interchangeables (storage, auth, ai, payments, signature, analytics, forms, pdf, images)
+├── lib/                 État global (store), PWA, partage
+├── components/          Composants métier + ui/ (design system : Button, Form, Card, Badge, Dialog, Drawer, Toast, Skeleton, Avatar, StatCard, EmptyState, ConfirmDialog)
+├── layouts/             AppLayout (barre latérale ordinateur, barre du bas mobile, bouton +), PublicLayout (site)
+└── pages/               public/, projects/, clients/, settings/…
+docs/MIGRATION-SUPABASE.md
+tests/                   Vitest
 ```
 
-**Choix techniques** : React 19, TypeScript strict, Vite, Tailwind CSS v4, `idb` (IndexedDB), jsPDF, lucide-react (icônes), vite-plugin-pwa (service worker Workbox), React Router en mode `HashRouter`.
-
-**Règles de calcul** :
-
-- Prix du catalogue = prix HT **avant marge**.
-- Prix de vente unitaire = prix × (1 + marge).
-- TVA calculée sur le total HT.
-- Acompte = % du TTC.
-
-Exemple testé : 10 × 8 m = 80 m², gazon 80 × 18 € = 1 440 €, préparation 80 × 8 € = 640 €, transport 150 €. Coût 2 230 €, marge 30 %, **prix de vente 2 899 € HT**.
-
-**Tests** (`npm test`, 63 tests) :
-
-- surfaces, volumes, quantités, pertes ;
-- marge, TVA, total, acompte ;
-- numérotation ;
-- stockage IndexedDB, export/import aller-retour (photos comprises) ;
-- statistiques, notifications ;
-- IA (confiance, fourchettes, consentement) ;
-- signature, paiement, génération PDF.
+Les écrans sont chargés à la demande (bundle initial d’environ 100 Ko gzip).
 
 ---
 
-## 10. Évolution future
+## 9. Tests
 
-L'architecture est prête. Chaque service externe se branche en implémentant une interface existante, sans réécrire l'application.
+`npm test` lance 81 tests :
 
-| Évolution | Comment | Coût de départ |
-|---|---|---|
-| Comptes, cloud, multi-appareils, équipes | `SupabaseProvider` implémentant `StorageProvider`, avec authentification et règles RLS | Offre gratuite Supabase |
-| Lien public client `/quote/ABC123` | Table de devis publiés (lecture par jeton), même page `ClientQuotePage` | Inclus avec Supabase |
-| IA (analyse photo, fourchette de surface, rendu « après ») | `ExternalAIProvider` appelant une fonction serveur (Supabase Edge Function ou Cloudflare Worker) qui détient la clé. Consentement déjà prévu. | Selon l'API choisie |
-| Paiement en ligne de l'acompte | `StripeProvider` implémentant `PaymentProvider`, avec webhooks côté serveur | Commission par paiement |
-| Signature électronique qualifiée | Prestataire conforme eIDAS (Yousign…) via `SignatureProvider` | Abonnement du prestataire |
-| E-mails, SMS, notifications push | Fonctions serveur (Resend, Brevo…) et Web Push | Offres gratuites limitées |
-
-Idées pour la suite : facturation (devis → facture), planning et météo, trajets et tournées, catalogue fournisseurs, reconnaissance des plantes, plan 2D, demande d'avis Google, statistiques avancées.
+- **Calculs** : surfaces, volumes, pertes, prix de vente et coût, marge, TVA, TTC, acompte, numérotation.
+- **Stockage** : IndexedDB, export/import aller-retour avec photos, suppression.
+- **Migration** des données du MVP vers la bêta.
+- **Vue publique** : aucune fuite de coût, de marge ou de note interne.
+- **Plans** (Premium Max), modèles de devis, formulaires (validation, nettoyage), analytics local, compte local.
+- **Assistant IA**, signature, paiements, notifications, statistiques, génération du PDF.
 
 ---
 
-Licence : à définir par l'auteur (MIT recommandée pour un projet open source).
+## 10. Limites de la bêta
+
+- Données sur **un seul appareil**, sans synchronisation : il faut télécharger régulièrement une sauvegarde.
+- La page client s’ouvre sur l’appareil du professionnel (présentation) ou le client reçoit le PDF. Le lien public à distance nécessite un backend.
+- Les inscriptions bêta et messages envoyés depuis le site public restent sur l’appareil du visiteur. Pour les recevoir, configurez `VITE_CONTACT_EMAIL` (e-mail pré-rempli) ou branchez Supabase.
+- Signature simple, **non qualifiée eIDAS**. Pas de paiement en ligne. Pas d’analyse automatique des photos.
+- Pages juridiques : **modèles à faire valider**.
+- Plusieurs onglets ouverts sur la même adresse ne se synchronisent pas entre eux.
+
+## 11. Avant le lancement commercial
+
+1. Backend Supabase : comptes, synchronisation, lien public du devis, collecte des inscriptions ([guide](docs/MIGRATION-SUPABASE.md)).
+2. Validation juridique : CGU, confidentialité (RGPD), mentions légales, mentions obligatoires des devis selon l’activité.
+3. Signature électronique conforme (prestataire eIDAS) si nécessaire.
+4. Paiement de l’acompte en ligne (Stripe), puis activation des abonnements (`subscriptionsEnabled`).
+5. E-mails transactionnels : envoi du devis, notification de signature.
+6. IA distante (analyse photo) via un serveur, avec consentement.
+7. Facturation (devis → facture) et exports comptables.

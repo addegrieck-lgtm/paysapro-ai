@@ -20,6 +20,9 @@ export default defineConfig({
         globIgnores: ['**/html2canvas-*.js', '**/purify.es-*.js', '**/index.es-*.js'],
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
+        // la nouvelle version prend la main immédiatement : hors-ligne dès la première visite
+        clientsClaim: true,
+        skipWaiting: true,
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
     }),

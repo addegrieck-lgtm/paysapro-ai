@@ -16,6 +16,7 @@ import { updateQuote } from '../../features/quotes/actions';
 import { isQuoteLocked } from '../../features/projects/status';
 import { clientDisplayName } from '../../features/clients/format';
 import { storage } from '../../services/storage';
+import { analytics } from '../../services/analytics/AnalyticsProvider';
 
 export function VisualizePage() {
   const { id } = useParams();
@@ -35,6 +36,7 @@ export function VisualizePage() {
   const describe = async () => {
     setBusy(true);
     setText(await provider.generateDescription(ctx, elements));
+    analytics.track('ai_used', { feature: 'visualize_description' });
     setBusy(false);
   };
 
@@ -85,7 +87,7 @@ export function VisualizePage() {
               ))}
             </div>
             <Button className="mt-3" variant="secondary" icon={<ScanSearch className="h-5 w-5" />} onClick={analyze}>
-              Analyser la photo
+              Analyse intelligente du chantier
             </Button>
             {analysis && !analysis.available && (
               <div className="mt-3">

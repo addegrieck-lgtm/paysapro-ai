@@ -8,13 +8,13 @@ export function LogoMark({ className = 'h-9 w-9' }: { className?: string }) {
   );
 }
 
-export function Logo() {
+export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
       <LogoMark />
       <div className="leading-tight">
         <div className="text-lg font-bold tracking-tight text-ink">Paysapro</div>
-        <div className="text-xs font-medium text-muted">Devis & chantiers</div>
+        <div className={`text-xs font-medium text-muted ${compact ? 'hidden sm:block' : ''}`}>Devis & chantiers</div>
       </div>
     </div>
   );

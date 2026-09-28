@@ -32,7 +32,7 @@ export function AISettingsPage() {
   const set = (m: AIMode) => updateSettings({ aiMode: m });
   return (
     <div className="space-y-5">
-      <PageHeader back="/more" title="Assistance IA" subtitle="L’application fonctionne entièrement sans IA externe." />
+      <PageHeader back="/settings" title="Assistance IA" subtitle="L’application fonctionne entièrement sans IA externe." />
       <div role="radiogroup" aria-label="Mode d’assistance" className="space-y-3">
         <Option selected={settings.aiMode === 'local'} onSelect={() => set('local')} icon={<Cpu className="h-6 w-6" />} title="Assistant local (recommandé)">
           Propositions de prestations à partir du type de projet, des notes et de vos mesures, avec explication et niveau de confiance. 100 % hors-ligne, gratuit, aucune donnée envoyée.
