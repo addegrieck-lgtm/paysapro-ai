@@ -8,12 +8,13 @@ import { getState, persist } from '../../lib/store';
 import { isDemoSpace, storage } from '../../services/storage';
 import { CLOUD_ENABLED, supabase } from '../../services/cloud/client';
 import { toPublicQuote, type PublicQuoteView } from './publicView';
+import { hasFeature } from '../plans/plans';
 
 /** Longueur minimale d'un jeton de lien public (24 caractères sur 32 symboles ≈ 120 bits). */
 export const PUBLIC_TOKEN_MIN_LENGTH = 20;
 
 export function canPublishOnline(): boolean {
-  return CLOUD_ENABLED && !isDemoSpace() && typeof storage.publishQuote === 'function';
+  return CLOUD_ENABLED && !isDemoSpace() && typeof storage.publishQuote === 'function' && hasFeature('client_portal');
 }
 
 export function publicQuoteUrl(token: string): string {

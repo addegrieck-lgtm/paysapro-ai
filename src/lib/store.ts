@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import type { ActivityEvent, AppSettings, CatalogItem, Client, PhotoMeta, Project, Quote, QuoteTemplate, SubscriptionInfo, User } from '../types';
 import { isDemoSpace, storage } from '../services/storage';
-import { CLOUD_ENABLED, fetchSubscription, refreshCloudSession } from '../services/cloud/client';
+import { CLOUD_ENABLED, fetchSubscription, getCloudSession, refreshCloudSession, type MemberRole } from '../services/cloud/client';
 import { builtInTemplates, defaultCatalog, defaultSettings } from '../data/defaults';
 import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings, needsMigration } from '../features/migrations';
 
@@ -12,6 +12,8 @@ export interface AppState {
   loadError: string | null;
   demo: boolean;
   user: User | null;
+  /** Rôle dans l'entreprise (mode cloud) ; null en mode local ou démo */
+  role: MemberRole | null;
   /** Abonnement de l'entreprise (mode cloud) ; null en mode local ou démo */
   subscription: SubscriptionInfo | null;
   settings: AppSettings;
@@ -29,6 +31,7 @@ let state: AppState = {
   loadError: null,
   demo: false,
   user: null,
+  role: null,
   subscription: null,
   settings: defaultSettings(),
   clients: [],
@@ -74,6 +77,9 @@ export async function persist(task: () => Promise<unknown>): Promise<boolean> {
   } catch (e) {
     console.error(e);
     const quota = e instanceof DOMException && e.name === 'QuotaExceededError';
+    // Mode cloud : l'écran a été mis à jour avant le refus du serveur (droits, réseau).
+    // On relit la base pour ne jamais afficher une modification qui n'a pas été enregistrée.
+    if (CLOUD_ENABLED && !isDemoSpace() && typeof navigator !== 'undefined' && navigator.onLine) void loadAll();
     errorHandler(
       quota
         ? "L'espace de stockage de l'appareil est plein. Exportez vos données puis supprimez d'anciennes photos."
@@ -109,7 +115,7 @@ export async function loadAll(): Promise<void> {
       const session = await refreshCloudSession();
       if (!session?.companyId) {
         const user = session ? await storage.getUser() : null;
-        setState({ ready: true, loadError: null, demo: false, user, subscription: null, settings: defaultSettings(), clients: [], projects: [], quotes: [], catalog: [], templates: [], photos: [], activity: [] });
+        setState({ ready: true, loadError: null, demo: false, user, role: null, subscription: null, settings: defaultSettings(), clients: [], projects: [], quotes: [], catalog: [], templates: [], photos: [], activity: [] });
         return;
       }
     }
@@ -146,7 +152,8 @@ export async function loadAll(): Promise<void> {
       await Promise.all([...projects.map((p) => storage.saveProject(p)), ...quotes.map((q) => storage.saveQuote(q))]);
     }
     const subscription = cloud ? ((await fetchSubscription()) as SubscriptionInfo | null) : null;
-    setState({ ready: true, loadError: null, demo: isDemoSpace(), user, subscription, settings, clients, projects, quotes, catalog, templates, photos, activity });
+    const role = cloud ? (getCloudSession()?.role ?? null) : null;
+    setState({ ready: true, loadError: null, demo: isDemoSpace(), user, role, subscription, settings, clients, projects, quotes, catalog, templates, photos, activity });
   } catch (e) {
     console.error(e);
     const blocked = e instanceof Error && e.name === 'StorageBlockedError';

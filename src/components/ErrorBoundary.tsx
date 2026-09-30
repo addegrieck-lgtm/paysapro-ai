@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { LogoMark } from './Logo';
+import { reportError } from '../services/monitoring';
 
 interface State {
   error: Error | null;
@@ -19,6 +20,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(error, info.componentStack);
+    reportError(error, 'render');
   }
 
   render() {

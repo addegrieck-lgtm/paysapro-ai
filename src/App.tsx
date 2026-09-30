@@ -15,6 +15,7 @@ import { openDemo } from './features/settings/dataActions';
 import { isDemoSpace } from './services/storage';
 import { CLOUD_ENABLED } from './services/cloud/client';
 import { watchAuth } from './features/auth/actions';
+import { initMonitoring } from './services/monitoring';
 const LoginPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.SignupPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -192,7 +193,7 @@ function AppRoutes() {
         <Route path="projects/new" element={<NewQuotePage mode="project" />} />
         <Route path="projects/:id" element={<ProjectPage />} />
         <Route path="projects/:id/photos" element={<PhotosPage />} />
-        <Route path="projects/:id/measures" element={<MeasuresPage />} />
+        <Route path="projects/:id/measures" element={<RequireFeature feature="measurements"><MeasuresPage /></RequireFeature>} />
         <Route path="projects/:id/services" element={<ServicesPage />} />
         <Route path="projects/:id/quote" element={<QuotePage />} />
         <Route path="projects/:id/work" element={<WorkPage />} />
@@ -257,6 +258,7 @@ export default function App() {
       analytics.track('app_opened');
     };
     void start();
+    void initMonitoring();
     void requestPersistentStorage();
   }, []);
   return (

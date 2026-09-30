@@ -68,6 +68,17 @@ export function OfflineBanner() {
   );
 }
 
+/** Rôle « lecture seule » : la base refuse toute modification, on prévient avant. */
+export function ReadOnlyBanner() {
+  const { role, demo } = useAppState();
+  if (demo || role !== 'read_only') return null;
+  return (
+    <div role="status" className="bg-surface-2 px-4 py-2 text-center text-sm font-medium text-muted">
+      Accès en lecture seule : vous pouvez consulter, mais pas modifier. Demandez un autre rôle à un administrateur de votre entreprise.
+    </div>
+  );
+}
+
 export function DemoBanner() {
   const { demo } = useAppState();
   const navigate = useNavigate();
@@ -155,6 +166,7 @@ export function AppLayout() {
       <div className="lg:ml-64">
         <DemoBanner />
         <OfflineBanner />
+        <ReadOnlyBanner />
         <main id="main" className="px-4 pb-28 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:pb-12 lg:pt-8">
           <div className="animate-in mx-auto max-w-3xl xl:max-w-4xl" key={pathname}>
             <Outlet />

@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/Button';
 import { Checkbox, TextArea, TextField } from '../../components/ui/Form';
 import { Alert, useToast } from '../../components/ui/Feedback';
 import { SAP_VERIFY_HINT, sapMissingFields } from '../../features/sap/sap';
+import { canUseFeature } from '../../features/plans/plans';
 import { CompanyFields } from '../../components/CompanyFields';
 import { updateCompany } from '../../features/settings/actions';
 import { isValidEmail } from '../../utils/validation';
@@ -44,6 +45,7 @@ export function CompanyPage() {
   const sap = company.sap;
   const setSap = (patch: Partial<typeof sap>) => setCompany({ ...company, sap: { ...sap, ...patch } });
   const sapMissing = sapMissingFields(company);
+  const sapAccess = canUseFeature('sap');
   const companyAddress = [company.address, [company.postalCode, company.city].filter(Boolean).join(' ')].filter((s) => s.trim()).join(', ');
 
   return (
@@ -101,11 +103,12 @@ export function CompanyPage() {
 
       <Card>
         <CardTitle icon={<HeartHandshake className="h-5 w-5" />}>Services à la personne (SAP)</CardTitle>
-        <Checkbox checked={sap.enabled} onChange={(v) => setSap({ enabled: v })}>
+        {!sapAccess.allowed && <p className="mb-2 text-sm text-warning">{sapAccess.reason}</p>}
+        <Checkbox checked={sap.enabled && sapAccess.allowed} onChange={(v) => sapAccess.allowed && setSap({ enabled: v })}>
           Activer le mode SAP
           <span className="block text-sm text-muted">Pour les entreprises disposant d’une déclaration SAP. Facultatif : sans effet sur vos devis habituels.</span>
         </Checkbox>
-        {sap.enabled && (
+        {sap.enabled && sapAccess.allowed && (
           <div className="mt-3 space-y-4">
             <Alert tone="info">{SAP_VERIFY_HINT}</Alert>
             <div className="grid gap-3 sm:grid-cols-2">
