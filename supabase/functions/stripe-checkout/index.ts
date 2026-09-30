@@ -1,17 +1,17 @@
 // Crée une session de paiement Stripe (abonnement) pour l'entreprise de l'administrateur connecté.
 // Appelée par l'application : supabase.functions.invoke('stripe-checkout', { body: { plan } }).
-import { APP_URL, cors, customerFor, json, PRICE_IDS, requireAdmin, stripe, YEARLY_PRICE_IDS } from '../_shared/stripe.ts';
+import { originOf, cors, customerFor, json, PRICE_IDS, requireAdmin, stripe, YEARLY_PRICE_IDS } from '../_shared/stripe.ts';
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors() });
-  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(req) });
+  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, req);
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return json({ error: 'forbidden' }, 403);
+    if (!admin) return json({ error: 'forbidden' }, 403, req);
     const { plan, interval } = (await req.json().catch(() => ({}))) as { plan?: string; interval?: string };
     // Le navigateur choisit l'offre et la périodicité ; le prix, lui, vient toujours des tarifs Stripe configurés ici.
     const price = plan ? (interval === 'year' ? YEARLY_PRICE_IDS : PRICE_IDS)[plan] : undefined;
-    if (!price) return json({ error: 'unknown_plan' }, 400);
+    if (!price) return json({ error: 'unknown_plan' }, 400, req);
 
     const customer = await customerFor(admin.companyId, admin.email);
     const session = await stripe('checkout/sessions', {
@@ -23,12 +23,12 @@ Deno.serve(async (req) => {
       'subscription_data[metadata][company_id]': admin.companyId,
       'metadata[company_id]': admin.companyId,
       allow_promotion_codes: 'true',
-      success_url: `${APP_URL}/#/settings/subscription?paiement=ok`,
-      cancel_url: `${APP_URL}/#/settings/subscription`,
+      success_url: `${originOf(req)}/#/settings/subscription?paiement=ok`,
+      cancel_url: `${originOf(req)}/#/settings/subscription`,
     });
-    return json({ url: session.url });
+    return json({ url: session.url }, 200, req);
   } catch (e) {
     console.error(e);
-    return json({ error: 'server_error' }, 500);
+    return json({ error: 'server_error' }, 500, req);
   }
 });

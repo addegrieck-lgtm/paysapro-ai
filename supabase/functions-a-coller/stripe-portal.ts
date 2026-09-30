@@ -31,17 +31,26 @@ function planForPrice(priceId: string | undefined): string | null {
   return found ? found[0] : null;
 }
 
-function cors(): Record<string, string> {
+/** Origines autorisées : l'application, plus d'éventuelles adresses d'essai (APP_EXTRA_ORIGINS, séparées par des virgules). */
+const ALLOWED_ORIGINS = [APP_URL, ...(Deno.env.get('APP_EXTRA_ORIGINS') ?? '').split(',').map((o) => o.trim().replace(/\/+$/, ''))].filter(Boolean);
+
+/** Adresse de retour après paiement : l'origine de la requête si elle est autorisée, sinon l'application. */
+function originOf(req?: Request): string {
+  const origin = (req?.headers.get('Origin') ?? '').replace(/\/+$/, '');
+  return ALLOWED_ORIGINS.includes(origin) ? origin : APP_URL;
+}
+
+function cors(req?: Request): Record<string, string> {
   return {
-    'Access-Control-Allow-Origin': APP_URL || 'null',
+    'Access-Control-Allow-Origin': originOf(req) || 'null',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     Vary: 'Origin',
   };
 }
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...cors(), 'Content-Type': 'application/json' } });
+function json(body: unknown, status = 200, req?: Request): Response {
+  return new Response(JSON.stringify(body), { status, headers: { ...cors(req), 'Content-Type': 'application/json' } });
 }
 
 /** Client « service_role » : contourne RLS, réservé au serveur. */
@@ -95,18 +104,18 @@ async function customerFor(companyId: string, email: string): Promise<string> {
 // Ouvre le portail client Stripe (moyen de paiement, factures, changement d'offre, résiliation).
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors() });
-  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(req) });
+  if (req.method !== 'POST') return json({ error: 'method_not_allowed' }, 405, req);
   try {
     const admin = await requireAdmin(req);
-    if (!admin) return json({ error: 'forbidden' }, 403);
+    if (!admin) return json({ error: 'forbidden' }, 403, req);
     const sub = await adminClient().from('subscriptions').select('stripe_customer_id').eq('company_id', admin.companyId).maybeSingle();
     const customer = sub.data?.stripe_customer_id as string | null | undefined;
-    if (!customer) return json({ error: 'no_customer' }, 400);
-    const session = await stripe('billing_portal/sessions', { customer, return_url: `${APP_URL}/#/settings/subscription` });
-    return json({ url: session.url });
+    if (!customer) return json({ error: 'no_customer' }, 400, req);
+    const session = await stripe('billing_portal/sessions', { customer, return_url: `${originOf(req)}/#/settings/subscription` });
+    return json({ url: session.url }, 200, req);
   } catch (e) {
     console.error(e);
-    return json({ error: 'server_error' }, 500);
+    return json({ error: 'server_error' }, 500, req);
   }
 });

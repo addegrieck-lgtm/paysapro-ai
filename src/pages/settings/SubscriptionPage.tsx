@@ -1,5 +1,5 @@
 import { Check, Clock, CreditCard, Rocket } from 'lucide-react';
-import { useAppState } from '../../lib/store';
+import { loadAll, useAppState } from '../../lib/store';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge, Card, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -7,7 +7,8 @@ import { FEATURES, PAID_PLANS, planFor, priceLabel, YEARLY_DISCOUNT_PERCENT, yea
 import { Segmented } from '../../components/ui/Form';
 import { APP_CONFIG } from '../../config/app';
 import { formatDate } from '../../utils/date';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router';
 import { useToast } from '../../components/ui/Feedback';
 import { billingEnabled, openBillingPortal, startCheckout } from '../../features/plans/billing';
 
@@ -50,6 +51,13 @@ export function SubscriptionPage() {
   const [busy, setBusy] = useState(false);
   const [interval, setBillingInterval] = useState<BillingInterval>('year');
   const billing = billingEnabled();
+  // Retour de Stripe : l'abonnement est écrit par le webhook, parfois quelques secondes après la redirection.
+  const paid = useLocation().search.includes('paiement=ok');
+  useEffect(() => {
+    if (!paid) return;
+    const timers = [2000, 6000, 12000].map((ms) => setTimeout(() => void loadAll(), ms));
+    return () => timers.forEach(clearTimeout);
+  }, [paid]);
   const pay = async (task: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -63,6 +71,11 @@ export function SubscriptionPage() {
   return (
     <div className="space-y-5">
       <PageHeader back="/settings" title="Abonnement" />
+      {paid && !beta && (
+        <div role="status" className="rounded-xl bg-brand-soft p-3.5 font-medium text-brand">
+          {plan.features.length > 0 ? '✓ Paiement confirmé : votre abonnement est actif.' : 'Paiement reçu : activation de votre abonnement en cours…'}
+        </div>
+      )}
 
       <Card className={beta ? 'border-brand/40 bg-brand-soft/50' : ''}>
         <CardTitle icon={beta ? <Rocket className="h-5 w-5" /> : <CreditCard className="h-5 w-5" />}>Votre plan</CardTitle>

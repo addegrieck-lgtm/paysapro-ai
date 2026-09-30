@@ -31,17 +31,26 @@ function planForPrice(priceId: string | undefined): string | null {
   return found ? found[0] : null;
 }
 
-function cors(): Record<string, string> {
+/** Origines autorisées : l'application, plus d'éventuelles adresses d'essai (APP_EXTRA_ORIGINS, séparées par des virgules). */
+const ALLOWED_ORIGINS = [APP_URL, ...(Deno.env.get('APP_EXTRA_ORIGINS') ?? '').split(',').map((o) => o.trim().replace(/\/+$/, ''))].filter(Boolean);
+
+/** Adresse de retour après paiement : l'origine de la requête si elle est autorisée, sinon l'application. */
+function originOf(req?: Request): string {
+  const origin = (req?.headers.get('Origin') ?? '').replace(/\/+$/, '');
+  return ALLOWED_ORIGINS.includes(origin) ? origin : APP_URL;
+}
+
+function cors(req?: Request): Record<string, string> {
   return {
-    'Access-Control-Allow-Origin': APP_URL || 'null',
+    'Access-Control-Allow-Origin': originOf(req) || 'null',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     Vary: 'Origin',
   };
 }
 
-function json(body: unknown, status = 200): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...cors(), 'Content-Type': 'application/json' } });
+function json(body: unknown, status = 200, req?: Request): Response {
+  return new Response(JSON.stringify(body), { status, headers: { ...cors(req), 'Content-Type': 'application/json' } });
 }
 
 /** Client « service_role » : contourne RLS, réservé au serveur. */
