@@ -38,7 +38,9 @@ Application ◀── lit `subscriptions` ◀── fonction stripe-webhook ◀�
 
 Dans Supabase → **Edge Functions** :
 
-1. Créez trois fonctions nommées `stripe-checkout`, `stripe-portal`, `stripe-webhook` et collez-y le contenu de
+1. Créez trois fonctions nommées `stripe-checkout`, `stripe-portal`, `stripe-webhook`. Le plus simple : collez dans chacune le
+   fichier unique correspondant du dossier `supabase/functions-a-coller/` (généré par `node scripts/bundle-functions.mjs`).
+   Sinon, le contenu de
    `supabase/functions/<nom>/index.ts`. Les fichiers de `supabase/functions/_shared/` doivent être joints à chacune
    (ou déployez le tout avec l'outil en ligne de commande : `supabase functions deploy`).
 2. Pour `stripe-webhook` uniquement : désactivez **Verify JWT** (Stripe n'envoie pas de jeton Supabase ;
