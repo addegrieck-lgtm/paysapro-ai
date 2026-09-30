@@ -90,7 +90,7 @@ export async function updatePassword(password: string): Promise<void> {
   if (error) throw new AuthFormError(authMessage(error));
 }
 
-export type AuthLinkResult = 'none' | 'recovery' | 'confirmed' | 'invalid';
+export type AuthLinkResult = 'none' | 'recovery' | 'confirmed' | 'invalid' | 'invalid_recovery';
 
 /**
  * Lien reçu par e-mail (confirmation d'inscription, mot de passe oublié), traité AVANT le chargement.
@@ -112,13 +112,13 @@ export async function handleAuthLink(): Promise<AuthLinkResult> {
   let result: AuthLinkResult;
   if (tokenHash && type) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as 'recovery' | 'email' | 'signup' | 'invite' | 'magiclink' | 'email_change' });
-    result = error ? 'invalid' : type === 'recovery' ? 'recovery' : 'confirmed';
+    result = error ? (type === 'recovery' ? 'invalid_recovery' : 'invalid') : type === 'recovery' ? 'recovery' : 'confirmed';
   } else if (params.has('error_description')) {
     result = 'invalid';
   } else {
     // Attend la fin de l'échange du code par le client Supabase.
     const { data } = await supabase.auth.getSession();
-    result = data.session ? (reset ? 'recovery' : 'confirmed') : reset ? 'invalid' : 'none';
+    result = data.session ? (reset ? 'recovery' : 'confirmed') : reset ? 'invalid_recovery' : 'none';
   }
   window.history.replaceState(null, '', `${window.location.pathname}${window.location.hash}`);
   return result;

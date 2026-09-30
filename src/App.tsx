@@ -273,7 +273,8 @@ export default function App() {
       // Lien reçu par e-mail : traité avant le chargement pour ouvrir le bon écran.
       const link = CLOUD_ENABLED ? await handleAuthLink().catch(() => 'invalid' as const) : 'none';
       if (link === 'recovery') window.location.hash = '#/reset-password';
-      else if (link === 'invalid') window.location.hash = '#/reset-password?lien=invalide';
+      else if (link === 'invalid_recovery') window.location.hash = '#/reset-password?lien=invalide';
+      else if (link === 'invalid') window.location.hash = '#/login';
       if (APP_CONFIG.demoMode && !isDemoSpace()) await openDemo();
       else await loadAll();
       analytics.track('app_opened');
