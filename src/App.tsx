@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 import { HashRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router';
 import { canUseFeature, FEATURES, type Feature } from './features/plans/plans';
 import { loadAll, onStorageError, useAppState } from './lib/store';
-import { requestPersistentStorage } from './lib/pwa';
+import { applyPendingUpdate, requestPersistentStorage } from './lib/pwa';
 import { ToastProvider, useToast } from './components/ui/Feedback';
 import { Skeleton } from './components/ui/Extras';
 import { LogoMark } from './components/Logo';
@@ -261,6 +261,7 @@ function PageLoader() {
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
+    applyPendingUpdate();
     window.scrollTo(0, 0);
   }, [pathname]);
   return null;
