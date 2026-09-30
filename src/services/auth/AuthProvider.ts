@@ -2,7 +2,8 @@
 //
 //   AuthProvider
 //   ├── LocalAuthProvider  (bêta : profil stocké sur l'appareil, aucun mot de passe)
-//   └── CloudAuthProvider  (futur : Supabase Auth — e-mail + mot de passe / lien magique)
+//   └── comptes en ligne   (Supabase Auth, e-mail + mot de passe) : voir features/auth/actions.ts,
+//                          actif quand les variables VITE_SUPABASE_* sont définies
 //
 // En local, « s'inscrire » crée le profil du professionnel sur cet appareil. Aucun mot de passe
 // n'est demandé ni stocké : la protection repose sur le verrouillage du téléphone.

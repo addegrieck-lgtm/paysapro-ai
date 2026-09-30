@@ -9,6 +9,7 @@ import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings } fro
 import { builtInTemplates, defaultCatalog } from '../../data/defaults';
 import { buildDemoData, DEMO_COMPANY, DEMO_OWNER } from '../demo/demoData';
 import { generateDemoPhotos } from '../demo/demoPhotos';
+import { CLOUD_ENABLED, createCompany, getCloudSession } from '../../services/cloud/client';
 
 export async function exportData(): Promise<{ blob: Blob; fileName: string }> {
   const data = await storage.exportAll();
@@ -59,6 +60,7 @@ export interface OnboardingProfile {
 
 /** Crée le compte local et l'espace entreprise. */
 export async function completeOnboarding(profile: OnboardingProfile): Promise<void> {
+  if (CLOUD_ENABLED) return completeCloudOnboarding(profile);
   const user = await auth.signUp({ firstName: profile.firstName, lastName: profile.lastName, email: profile.company.email });
   const settings = {
     ...getState().settings,
@@ -71,6 +73,31 @@ export async function completeOnboarding(profile: OnboardingProfile): Promise<vo
   };
   setState({ settings, user });
   await persist(() => storage.saveSettings(settings));
+  analytics.track('onboarding_completed', { activities: profile.activities.length, services: profile.mainServices.length });
+}
+
+/**
+ * Mode cloud : l'utilisateur est déjà inscrit et connecté. Crée son entreprise (il en devient
+ * administrateur), puis le catalogue et les modèles de départ. Toute erreur remonte à l'écran.
+ */
+async function completeCloudOnboarding(profile: OnboardingProfile): Promise<void> {
+  const session = getCloudSession();
+  if (!session) throw new Error('Connectez-vous pour créer votre espace.');
+  const settings = {
+    ...migrateSettings(null),
+    company: profile.company,
+    owner: { firstName: profile.firstName.trim(), lastName: profile.lastName.trim() },
+    activities: profile.activities,
+    mainServices: profile.mainServices,
+    goal: profile.goal,
+    onboardingDone: true,
+  };
+  if (!session.companyId) await createCompany(profile.company.name.trim(), settings);
+  await storage.saveSettings(settings);
+  await storage.saveUser({ id: session.userId, firstName: profile.firstName, lastName: profile.lastName, email: session.email, provider: 'cloud', createdAt: new Date().toISOString() });
+  if ((await storage.getCatalog()).length === 0) for (const c of defaultCatalog()) await storage.saveCatalogItem(c);
+  if ((await storage.getTemplates()).length === 0) for (const t of builtInTemplates()) await storage.saveTemplate(t);
+  await loadAll();
   analytics.track('onboarding_completed', { activities: profile.activities.length, services: profile.mainServices.length });
 }
 

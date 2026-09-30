@@ -1,6 +1,6 @@
 # Migration vers le cloud (Supabase) — guide de préparation
 
-> Statut : **préparé, non activé**. La bêta fonctionne à 0 €, 100 % dans le navigateur (IndexedDB).
+> Statut : phase 1 réalisée — voir `docs/SUPABASE-SETUP.md`. Ce document reste le plan d'ensemble.
 > Ce document décrit comment brancher un backend sans réécrire l'application.
 
 ## Pourquoi migrer ?

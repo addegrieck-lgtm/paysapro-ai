@@ -13,11 +13,14 @@ import { analytics } from '../../services/analytics/AnalyticsProvider';
 import { applyMarginToLines } from './pricing';
 import { linesFromTemplate } from './lines';
 import type { QuoteTemplate } from '../../types';
+import { canPublishOnline, hasStrongToken, publishQuote, shouldPublish } from './publish';
 
 function save(quote: Quote): Quote {
   const saved = { ...quote, updatedAt: new Date().toISOString() };
   setState({ quotes: upsert(getState().quotes, saved) });
   void persist(() => storage.saveQuote(saved));
+  // Mode cloud : le client voit toujours la dernière version d'un devis envoyé.
+  if (shouldPublish(saved)) void publishQuote(saved);
   return saved;
 }
 
@@ -90,7 +93,9 @@ export function markSent(quoteId: string): void {
   const q = find(quoteId);
   if (!q || !q.number) return;
   if (q.status === 'draft' || q.status === 'ready' || q.status === 'refused') {
-    save({ ...q, status: 'sent', sentAt: q.sentAt ?? new Date().toISOString(), refusedAt: null });
+    // Les anciens devis ont un jeton court : on le remplace avant toute mise en ligne.
+    const token = canPublishOnline() && !hasStrongToken(q) ? publicToken() : q.publicToken;
+    save({ ...q, publicToken: token, status: 'sent', sentAt: q.sentAt ?? new Date().toISOString(), refusedAt: null });
     logActivity(`Devis ${q.number} envoyé à ${clientName(q)}.`, q.projectId);
     analytics.track('quote_sent');
   }

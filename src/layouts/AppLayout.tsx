@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import {
   BarChart3,
@@ -22,6 +22,7 @@ import { QuickActionsDrawer } from '../components/QuickActions';
 import { useAppState } from '../lib/store';
 import { exitDemo } from '../features/settings/dataActions';
 import { getCurrentPlan } from '../features/plans/plans';
+import { CLOUD_ENABLED } from '../services/cloud/client';
 
 const SIDEBAR = [
   { to: '/app', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -44,6 +45,27 @@ const BOTTOM_RIGHT = [
   { to: '/quotes', label: 'Devis', icon: FileText, end: false },
   { to: '/more', label: 'Plus', icon: Ellipsis, end: false },
 ];
+
+function subscribeOnline(cb: () => void) {
+  window.addEventListener('online', cb);
+  window.addEventListener('offline', cb);
+  return () => {
+    window.removeEventListener('online', cb);
+    window.removeEventListener('offline', cb);
+  };
+}
+
+/** Mode cloud : sans réseau, rien ne peut être enregistré. On le dit clairement. */
+export function OfflineBanner() {
+  const { demo } = useAppState();
+  const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine);
+  if (!CLOUD_ENABLED || demo || online) return null;
+  return (
+    <div role="status" className="bg-warning-soft px-4 py-2 text-center text-sm font-medium text-warning">
+      Hors connexion : vos modifications ne seront pas enregistrées tant que le réseau n’est pas revenu.
+    </div>
+  );
+}
 
 export function DemoBanner() {
   const { demo } = useAppState();
@@ -131,6 +153,7 @@ export function AppLayout() {
 
       <div className="lg:ml-64">
         <DemoBanner />
+        <OfflineBanner />
         <main id="main" className="px-4 pb-28 pt-[calc(1rem+env(safe-area-inset-top))] sm:px-6 lg:pb-12 lg:pt-8">
           <div className="animate-in mx-auto max-w-3xl xl:max-w-4xl" key={pathname}>
             <Outlet />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Navigate, useNavigate } from 'react-router';
 import { ArrowRight, Check, FileText, FlaskConical, LayoutDashboard } from 'lucide-react';
 import { useAppState } from '../lib/store';
 import { LogoMark } from '../components/Logo';
@@ -9,6 +9,7 @@ import { Chip, TextField } from '../components/ui/Form';
 import { Alert } from '../components/ui/Feedback';
 import { CompanyFields } from '../components/CompanyFields';
 import { completeOnboarding, exitDemo, openDemo } from '../features/settings/dataActions';
+import { CLOUD_ENABLED } from '../services/cloud/client';
 import { APP_CONFIG } from '../config/app';
 import { isValidEmail } from '../utils/validation';
 import type { Activity, CompanySettings, Goal } from '../types';
@@ -59,9 +60,15 @@ export function OnboardingPage() {
 
   const finish = async () => {
     setBusy(true);
-    await completeOnboarding({ firstName, lastName, company, activities, mainServices: services, goal });
-    setBusy(false);
-    setStep(5);
+    try {
+      await completeOnboarding({ firstName, lastName, company, activities, mainServices: services, goal });
+      setStep(5);
+    } catch (e) {
+      console.error(e);
+      setError('La création de votre espace a échoué. Vérifiez votre connexion, puis réessayez.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const next = async () => {
@@ -73,6 +80,9 @@ export function OnboardingPage() {
     if (step === 4) return finish();
     setStep(step + 1);
   };
+
+  // Mode cloud : la création de l'espace exige un compte connecté.
+  if (CLOUD_ENABLED && !demo && !user && step > 0) return <Navigate to="/signup" replace />;
 
   return (
     <div className="min-h-dvh bg-bg px-4 pb-10 pt-[calc(1.25rem+env(safe-area-inset-top))]">
@@ -106,7 +116,7 @@ export function OnboardingPage() {
               <p className="mt-3 text-lg text-muted">Votre nouvel assistant pour transformer vos chantiers en devis professionnels.</p>
               <p className="mt-2 font-semibold text-brand">{APP_CONFIG.punchline}</p>
               <div className="mt-8 space-y-3">
-                <Button block size="lg" onClick={() => setStep(1)} icon={<ArrowRight className="h-5 w-5" />}>
+                <Button block size="lg" onClick={() => (CLOUD_ENABLED && !user ? navigate('/signup') : setStep(1))} icon={<ArrowRight className="h-5 w-5" />}>
                   Commencer
                 </Button>
                 <Button
@@ -121,7 +131,7 @@ export function OnboardingPage() {
                   Voir d’abord la démo
                 </Button>
               </div>
-              <p className="mt-6 text-sm text-muted">Gratuit pendant la bêta · sans carte bancaire · vos données restent sur votre appareil</p>
+              <p className="mt-6 text-sm text-muted">Gratuit pendant la bêta · sans carte bancaire{!CLOUD_ENABLED && ' · vos données restent sur votre appareil'}</p>
             </div>
           )}
 

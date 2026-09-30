@@ -300,7 +300,8 @@ export interface QuoteLine {
 export type QuoteStatus = 'draft' | 'ready' | 'sent' | 'viewed' | 'accepted' | 'signed' | 'refused';
 
 export interface SignatureRecord {
-  provider: 'local' | 'electronic';
+  /** 'online' : signée par le client via le lien public (date et empreinte fixées par le serveur) */
+  provider: 'local' | 'electronic' | 'online';
   signerName: string;
   signedAt: ISODate;
   imageDataUrl: string;
@@ -415,6 +416,7 @@ export interface FeedbackEntry {
 
 export type AnalyticsEventName =
   | 'app_opened'
+  | 'account_created'
   | 'onboarding_completed'
   | 'client_created'
   | 'project_created'

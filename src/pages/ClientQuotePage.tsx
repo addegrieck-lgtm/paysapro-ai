@@ -1,18 +1,21 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { ArrowLeft, BadgeCheck, Download, Landmark, Loader2, PenLine, Phone, Wallet } from 'lucide-react';
 import { useAppState } from '../lib/store';
-import { useProjectData } from '../hooks/useData';
+import { setPublicPhotoSource, useProjectData } from '../hooks/useData';
 import { QuoteDocument } from '../components/QuoteDocument';
 import { SignaturePad } from '../components/SignaturePad';
 import { PhotoThumb } from '../components/PhotoThumb';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Checkbox, TextField } from '../components/ui/Form';
+import { Checkbox, TextArea, TextField } from '../components/ui/Form';
 import { Alert, Dialog, EmptyState, useToast } from '../components/ui/Feedback';
 import { LogoMark } from '../components/Logo';
 import { markAccepted, markViewed, signQuote } from '../features/quotes/actions';
-import { toPublicQuote } from '../features/quotes/publicView';
+import { toPublicQuote, type PublicQuoteView } from '../features/quotes/publicView';
+import { fetchPublicQuote, loadPublicPhoto, refusePublicQuote, signPublicQuote, type RemoteQuote } from '../features/quotes/publish';
+import { CLOUD_ENABLED } from '../services/cloud/client';
+import { isDemoSpace } from '../services/storage';
 import { buildQuotePdf } from '../features/quotes/pdf';
 import { isQuoteExpired } from '../features/projects/status';
 import { paymentProvider } from '../services/payments/PaymentProvider';
@@ -24,13 +27,54 @@ import { DEFAULT_BRAND_COLOR } from '../data/defaults';
 /**
  * Espace client : « Votre projet avec [Entreprise] ».
  * N'affiche que la vue publique du devis (jamais coûts, marges ni notes internes).
- * MVP local : la page s'ouvre sur l'appareil du professionnel ; avec un backend,
- * la même page sera servie à l'adresse publique /quote/:token.
+ *  • sur l'appareil du professionnel (« Présenter au client ») : données locales ;
+ *  • via le lien public (mode cloud) : le client, sans compte, lit et signe par jeton.
  */
 export function ClientQuotePage() {
   const { token } = useParams();
   const { quotes } = useAppState();
-  const toast = useToast();
+  const local = quotes.some((q) => q.publicToken === token);
+  if (!local && CLOUD_ENABLED && !isDemoSpace()) return <RemoteClientQuote token={token ?? ''} />;
+  return <LocalClientQuote token={token} />;
+}
+
+interface ScreenProps {
+  view: PublicQuoteView;
+  expired: boolean;
+  /** Lien « Retour à l'application » (uniquement sur l'appareil du professionnel) */
+  proBackTo: string | null;
+  onAccept: () => void;
+  onSign: (name: string, imageDataUrl: string) => Promise<void>;
+  onRefuse?: (comment: string) => Promise<void>;
+  buildPdf: () => Promise<File>;
+}
+
+function NotFound({ proBackTo, children }: { proBackTo: string | null; children: ReactNode }) {
+  return (
+    <div className="min-h-dvh bg-bg">
+      {proBackTo && <ProBar to={proBackTo} />}
+      <div className="mx-auto max-w-lg p-6 pt-16">
+        <EmptyState icon={<PenLine className="h-7 w-7" />} title="Devis introuvable">
+          {children}
+        </EmptyState>
+      </div>
+    </div>
+  );
+}
+
+function ProBar({ to }: { to: string }) {
+  return (
+    <div className="no-print flex items-center justify-between gap-3 bg-ink px-4 py-2 text-sm text-bg">
+      <span>Présentation au client</span>
+      <Link to={to} className="inline-flex min-h-10 items-center gap-1.5 font-semibold underline-offset-2 hover:underline">
+        <ArrowLeft className="h-4 w-4" aria-hidden /> Retour à l’application
+      </Link>
+    </div>
+  );
+}
+
+function LocalClientQuote({ token }: { token: string | undefined }) {
+  const { quotes } = useAppState();
   const quoteRef = useMemo(() => quotes.find((q) => q.publicToken === token), [quotes, token]);
   const { project, quote, client, photos, settings } = useProjectData(quoteRef?.projectId);
   const view = useMemo(
@@ -38,6 +82,97 @@ export function ClientQuotePage() {
     [quote, project, client, settings.company, photos],
   );
 
+  useEffect(() => {
+    if (quoteRef?.status === 'sent') markViewed(quoteRef.id);
+  }, [quoteRef?.id, quoteRef?.status]);
+
+  if (!quote || !view) {
+    return (
+      <NotFound proBackTo="/app">
+        Ce devis n’existe pas sur cet appareil.
+      </NotFound>
+    );
+  }
+  return (
+    <ClientQuoteScreen
+      view={view}
+      expired={isQuoteExpired(quote)}
+      proBackTo={project ? `/projects/${project.id}/quote` : '/app'}
+      onAccept={() => {
+        if (quote.status !== 'accepted') markAccepted(quote.id, 'client');
+      }}
+      onSign={async (name, image) => {
+        await signQuote(quote.id, name, image);
+      }}
+      buildPdf={() => buildQuotePdf(view, settings.quotePrefix)}
+    />
+  );
+}
+
+function RemoteClientQuote({ token }: { token: string }) {
+  const [remote, setRemote] = useState<RemoteQuote | null>(null);
+  const [status, setStatus] = useState<'loading' | 'missing' | 'error' | 'ready'>('loading');
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPublicQuote(token)
+      .then((result) => {
+        if (cancelled) return;
+        if (result) setPublicPhotoSource((id, quality) => loadPublicPhoto(result.companyId, id, quality));
+        setRemote(result);
+        setStatus(result ? 'ready' : 'missing');
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error');
+      });
+    return () => {
+      cancelled = true;
+      setPublicPhotoSource(null);
+    };
+  }, [token, attempt]);
+
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-bg" aria-busy="true" aria-label="Chargement du devis">
+        <Loader2 className="h-8 w-8 animate-spin text-brand" aria-hidden />
+      </div>
+    );
+  }
+  if (status === 'error') {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-bg p-6 text-center">
+        <p className="max-w-sm text-muted">Le devis n’a pas pu être chargé. Vérifiez votre connexion Internet.</p>
+        <Button
+          onClick={() => {
+            setStatus('loading');
+            setAttempt((n) => n + 1);
+          }}
+        >
+          Réessayer
+        </Button>
+      </div>
+    );
+  }
+  if (!remote) return <NotFound proBackTo={null}>Ce lien n’est pas valide ou le devis n’est plus disponible. Contactez votre paysagiste.</NotFound>;
+
+  const { view, companyId } = remote;
+  const expired = view.status !== 'signed' && view.status !== 'accepted' && !!view.validUntil && new Date(view.validUntil).getTime() < Date.now();
+  return (
+    <ClientQuoteScreen
+      view={view}
+      expired={expired}
+      proBackTo={null}
+      onAccept={() => undefined}
+      onSign={async (name, image) => setRemote(await signPublicQuote(token, name, image))}
+      onRefuse={view.status === 'sent' || view.status === 'viewed' ? async (comment) => setRemote(await refusePublicQuote(token, comment)) : undefined}
+      buildPdf={() => buildQuotePdf(view, 'DEVIS', (id) => loadPublicPhoto(companyId, id, 'medium'))}
+    />
+  );
+}
+
+function ClientQuoteScreen({ view, expired, proBackTo, onAccept, onSign, onRefuse, buildPdf }: ScreenProps) {
+  const toast = useToast();
   const [signing, setSigning] = useState(false);
   const [justSigned, setJustSigned] = useState(false);
   const [name, setName] = useState('');
@@ -47,41 +182,18 @@ export function ClientQuotePage() {
   const [busy, setBusy] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [refuseOpen, setRefuseOpen] = useState(false);
+  const [comment, setComment] = useState('');
 
-  useEffect(() => {
-    if (quoteRef?.status === 'sent') markViewed(quoteRef.id);
-  }, [quoteRef?.id, quoteRef?.status]);
-
-  const proBar = (
-    <div className="no-print flex items-center justify-between gap-3 bg-ink px-4 py-2 text-sm text-bg">
-      <span>Présentation au client</span>
-      <Link to={project ? `/projects/${project.id}/quote` : '/app'} className="inline-flex min-h-10 items-center gap-1.5 font-semibold underline-offset-2 hover:underline">
-        <ArrowLeft className="h-4 w-4" aria-hidden /> Retour à l’application
-      </Link>
-    </div>
-  );
-
-  if (!quote || !view) {
-    return (
-      <div className="min-h-dvh bg-bg">
-        {proBar}
-        <div className="mx-auto max-w-lg p-6 pt-16">
-          <EmptyState icon={<PenLine className="h-7 w-7" />} title="Devis introuvable">
-            Ce devis n’existe pas sur cet appareil. Dans la version bêta, les devis sont conservés sur l’appareil du professionnel.
-          </EmptyState>
-        </div>
-      </div>
-    );
-  }
+  const proBar = proBackTo ? <ProBar to={proBackTo} /> : null;
 
   const company = view.company;
   const brand = /^#[0-9a-f]{6}$/i.test(company.brandColor) ? company.brandColor : DEFAULT_BRAND_COLOR;
   const greetingName = [view.client.firstName, view.client.lastName].filter(Boolean).join(' ') || view.client.displayName;
   const signed = !!view.signature;
-  const expired = isQuoteExpired(quote);
 
   const startSigning = () => {
-    if (quote.status !== 'accepted') markAccepted(quote.id, 'client');
+    onAccept();
     setName(greetingName);
     setSigning(true);
     setTimeout(() => document.getElementById('signature')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
@@ -93,7 +205,7 @@ export function ClientQuotePage() {
     if (!agree) return setError('Veuillez cocher « Je confirme accepter le devis ».');
     setBusy(true);
     try {
-      await signQuote(quote.id, name, signature);
+      await onSign(name, signature);
       setSigning(false);
       setJustSigned(true);
       setError(null);
@@ -108,7 +220,7 @@ export function ClientQuotePage() {
   const downloadPdf = async () => {
     setPdfBusy(true);
     try {
-      const file = await buildQuotePdf(view, settings.quotePrefix);
+      const file = await buildPdf();
       downloadBlob(file, file.name);
     } catch {
       toast('Le PDF n’a pas pu être généré. Réessayez.', 'danger');
@@ -205,9 +317,22 @@ export function ClientQuotePage() {
                   Signez le devis en bas de page ↓
                 </p>
               ) : (
-                <Button size="lg" block className="mt-4" onClick={startSigning} icon={<PenLine className="h-5 w-5" />}>
-                  Accepter le devis
-                </Button>
+                <>
+                  {view.status === 'refused' ? (
+                    <div className="mt-4">
+                      <Alert tone="info">Vous avez refusé ce devis. Contactez votre paysagiste si vous changez d’avis.</Alert>
+                    </div>
+                  ) : (
+                    <Button size="lg" block className="mt-4" onClick={startSigning} icon={<PenLine className="h-5 w-5" />}>
+                      Accepter le devis
+                    </Button>
+                  )}
+                  {onRefuse && (
+                    <Button variant="ghost" block className="mt-1" onClick={() => setRefuseOpen(true)}>
+                      Refuser le devis
+                    </Button>
+                  )}
+                </>
               )}
             </>
           )}
@@ -295,6 +420,39 @@ export function ClientQuotePage() {
           </a>
         )}
       </main>
+
+      <Dialog
+        open={refuseOpen}
+        onClose={() => setRefuseOpen(false)}
+        title="Refuser le devis"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRefuseOpen(false)}>
+              Annuler
+            </Button>
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={async () => {
+                if (!onRefuse) return;
+                setBusy(true);
+                try {
+                  await onRefuse(comment);
+                  setRefuseOpen(false);
+                } catch (e) {
+                  toast(e instanceof Error ? e.message : 'Le refus n’a pas pu être enregistré. Réessayez.', 'danger');
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              Confirmer le refus
+            </Button>
+          </>
+        }
+      >
+        <TextArea label="Un commentaire pour votre paysagiste ? (facultatif)" value={comment} onChange={setComment} rows={3} maxLength={500} />
+      </Dialog>
 
       <Dialog open={payOpen} onClose={() => setPayOpen(false)} title="Payer l’acompte">
         <div className="space-y-4">

@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import type { ActivityEvent, AppSettings, CatalogItem, Client, PhotoMeta, Project, Quote, QuoteTemplate, User } from '../types';
 import { isDemoSpace, storage } from '../services/storage';
+import { CLOUD_ENABLED, refreshCloudSession } from '../services/cloud/client';
 import { builtInTemplates, defaultCatalog, defaultSettings } from '../data/defaults';
 import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings, needsMigration } from '../features/migrations';
 
@@ -73,7 +74,9 @@ export async function persist(task: () => Promise<unknown>): Promise<boolean> {
     errorHandler(
       quota
         ? "L'espace de stockage de l'appareil est plein. Exportez vos données puis supprimez d'anciennes photos."
-        : 'Impossible d’enregistrer. Réessayez.',
+        : CLOUD_ENABLED && !isDemoSpace()
+          ? 'Enregistrement impossible. Vérifiez votre connexion Internet et vos droits, puis réessayez.'
+          : 'Impossible d’enregistrer. Réessayez.',
     );
     return false;
   }
@@ -96,7 +99,17 @@ export function without<T extends { id: string }>(list: T[], id: string): T[] {
  * et met à niveau les données d'une version précédente (migration sans perte).
  */
 export async function loadAll(): Promise<void> {
+  const cloud = CLOUD_ENABLED && !isDemoSpace();
   try {
+    if (cloud) {
+      // Mode cloud : sans session ou sans entreprise, rien n'est lu ni écrit (écrans de connexion / création).
+      const session = await refreshCloudSession();
+      if (!session?.companyId) {
+        const user = session ? await storage.getUser() : null;
+        setState({ ready: true, loadError: null, demo: false, user, settings: defaultSettings(), clients: [], projects: [], quotes: [], catalog: [], templates: [], photos: [], activity: [] });
+        return;
+      }
+    }
     const rawSettings = await storage.getSettings();
     const migrate = needsMigration(rawSettings);
     const settings = migrateSettings(rawSettings);
@@ -137,7 +150,9 @@ export async function loadAll(): Promise<void> {
       ready: true,
       loadError: blocked
         ? e.message
-        : "Impossible d'accéder au stockage local. Vérifiez que la navigation privée est désactivée, puis rechargez la page.",
+        : cloud
+          ? 'Connexion au serveur impossible. Vérifiez votre connexion Internet, puis réessayez.'
+          : "Impossible d'accéder au stockage local. Vérifiez que la navigation privée est désactivée, puis rechargez la page.",
     });
   }
 }

@@ -78,6 +78,9 @@ export interface StorageProvider {
   getRecords<K extends keyof ProductRecords>(store: K): Promise<ProductRecords[K][]>;
   clearRecords(store: keyof ProductRecords): Promise<void>;
 
+  /** Mode cloud uniquement : enregistre la vue publique d'un devis (lien client). */
+  publishQuote?(id: ID, view: object): Promise<void>;
+
   exportAll(): Promise<ExportFile>;
   /** Remplace toutes les données métier par celles du fichier (déjà migré) */
   importAll(data: ExportFile): Promise<void>;

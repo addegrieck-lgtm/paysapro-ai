@@ -12,6 +12,12 @@ import { analytics } from './services/analytics/AnalyticsProvider';
 import { APP_CONFIG } from './config/app';
 import { openDemo } from './features/settings/dataActions';
 import { isDemoSpace } from './services/storage';
+import { CLOUD_ENABLED } from './services/cloud/client';
+import { watchAuth } from './features/auth/actions';
+const LoginPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.LoginPage })));
+const SignupPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.SignupPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.ResetPasswordPage })));
 // Public
 import { LandingPage } from './pages/public/LandingPage';
 const PricingPage = lazy(() => import('./pages/public/PricingPage').then((m) => ({ default: m.PricingPage })));
@@ -90,7 +96,9 @@ function Splash({ message }: { message?: string }) {
 
 /** Espace professionnel : nécessite d'avoir créé son espace (onboarding). */
 function RequireWorkspace({ children }: { children: ReactNode }) {
-  const { settings } = useAppState();
+  const { settings, user, demo } = useAppState();
+  // Mode cloud : l'espace professionnel exige une session (la base refuse de toute façon tout accès anonyme).
+  if (CLOUD_ENABLED && !demo && !user) return <Navigate to="/login" replace />;
   if (!settings.onboardingDone) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
 }
@@ -103,6 +111,27 @@ function AppRoutes() {
   useEffect(() => {
     onStorageError((m) => toast(m, 'danger'));
   }, [toast]);
+
+  // Mode cloud : au retour sur l'application, on relit la base (un client a pu signer entre-temps).
+  useEffect(() => {
+    if (!CLOUD_ENABLED) return;
+    let last = Date.now();
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || isDemoSpace() || Date.now() - last < 30_000) return;
+      last = Date.now();
+      void loadAll();
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, []);
+
+  useEffect(
+    () =>
+      watchAuth(() => {
+        window.location.hash = '#/reset-password';
+      }),
+    [],
+  );
 
   if (!ready) return <Splash />;
   if (loadError) return <Splash message={loadError} />;
@@ -122,6 +151,10 @@ function AppRoutes() {
         <Route path="cookies" element={<CookiesPage />} />
       </Route>
       <Route path="onboarding" element={<OnboardingPage />} />
+      <Route path="login" element={<LoginPage />} />
+      <Route path="signup" element={<SignupPage />} />
+      <Route path="forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="reset-password" element={<ResetPasswordPage />} />
       {/* Page client (lien du devis) : sans navigation de l'application */}
       <Route path="quote/:token" element={<ClientQuotePage />} />
 

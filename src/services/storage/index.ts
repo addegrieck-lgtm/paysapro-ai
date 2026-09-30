@@ -4,9 +4,13 @@
 //  • « paysapro-ai »   : les vraies données du professionnel ;
 //  • « paysapro-demo » : l'espace de démonstration (entreprise et clients fictifs).
 // Ouvrir ou quitter la démo ne touche jamais aux vraies données.
-// Pour passer au cloud plus tard : remplacer la création du fournisseur dans createProvider().
+// Mode cloud (variables Supabase définies) : les vraies données sont dans la base de l'entreprise ;
+// la démo reste locale et séparée.
 import { IndexedDBProvider } from './IndexedDBProvider';
 import type { StorageProvider } from './StorageProvider';
+import { CloudStorageProvider } from './CloudStorageProvider';
+import { SupabaseApi } from '../cloud/SupabaseApi';
+import { getCloudSession, supabase } from '../cloud/client';
 
 const DEMO_FLAG = 'paysapro-demo-space';
 
@@ -19,6 +23,9 @@ function readDemoFlag(): boolean {
 }
 
 function createProvider(demo: boolean): StorageProvider {
+  if (!demo && supabase) {
+    return new CloudStorageProvider(new SupabaseApi(supabase, getCloudSession), new IndexedDBProvider('paysapro-ai'));
+  }
   return new IndexedDBProvider(demo ? 'paysapro-demo' : 'paysapro-ai');
 }
 

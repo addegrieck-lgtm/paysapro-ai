@@ -30,7 +30,15 @@ export function forgetPhotoUrls(photoId: string) {
   }
 }
 
-/** URL affichable d'une photo stockée dans IndexedDB. */
+type PhotoSource = (id: string, quality: 'thumb' | 'medium') => Promise<Blob | undefined>;
+let publicPhotoSource: PhotoSource | null = null;
+
+/** Page client en ligne : les photos viennent du lien public et non du stockage du professionnel. */
+export function setPublicPhotoSource(source: PhotoSource | null): void {
+  publicPhotoSource = source;
+}
+
+/** URL affichable d'une photo. */
 export function usePhotoUrl(photoId: string | undefined, quality: 'thumb' | 'medium' = 'thumb'): string | null {
   const key = photoId ? `${photoId}:${quality}` : '';
   const [url, setUrl] = useState<string | null>(() => (key ? (urlCache.get(key) ?? null) : null));
@@ -42,9 +50,12 @@ export function usePhotoUrl(photoId: string | undefined, quality: 'thumb' | 'med
   useEffect(() => {
     if (!photoId || urlCache.has(key)) return;
     let cancelled = false;
-    void storage.getPhoto(photoId).then((rec) => {
-      if (!rec || cancelled) return;
-      const u = URL.createObjectURL(quality === 'thumb' ? rec.thumb : rec.medium);
+    const load = publicPhotoSource
+      ? publicPhotoSource(photoId, quality)
+      : storage.getPhoto(photoId).then((rec) => rec && (quality === 'thumb' ? rec.thumb : rec.medium));
+    void load.then((blob) => {
+      if (!blob || cancelled) return;
+      const u = URL.createObjectURL(blob);
       urlCache.set(key, u);
       setUrl(u);
     });

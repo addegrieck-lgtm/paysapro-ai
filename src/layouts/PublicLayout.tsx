@@ -5,6 +5,7 @@ import { Logo } from '../components/Logo';
 import { ButtonLink } from '../components/ui/Button';
 import { useAppState } from '../lib/store';
 import { APP_CONFIG } from '../config/app';
+import { CLOUD_ENABLED } from '../services/cloud/client';
 
 const NAV = [
   { to: '/#fonctionnalites', label: 'Fonctionnalités' },
@@ -15,7 +16,8 @@ const NAV = [
 
 /** CTA principal : ouvre l'espace si déjà créé, sinon l'inscription. */
 export function useStartLink(): { to: string; label: string } {
-  const { settings, demo } = useAppState();
+  const { settings, demo, user } = useAppState();
+  if (CLOUD_ENABLED && !user) return { to: '/signup', label: 'Essayer gratuitement' };
   // Depuis la démo, l'inscription crée toujours un vrai espace (l'onboarding quitte la démo).
   return settings.onboardingDone && !demo ? { to: '/app', label: 'Ouvrir mon espace' } : { to: '/onboarding', label: 'Essayer gratuitement' };
 }
@@ -40,6 +42,11 @@ export function PublicLayout() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            {start.to === '/signup' && (
+              <Link to="/login" className="rounded-lg px-2 py-2 text-sm font-semibold text-ink hover:text-brand">
+                Connexion
+              </Link>
+            )}
             <span className="hidden sm:block">
               <ButtonLink to={start.to} size="sm">
                 {start.label}

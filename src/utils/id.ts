@@ -6,8 +6,8 @@ export function uid(): string {
 
 const TOKEN_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sans 0/O/1/I ambigus
 
-/** Jeton public court et lisible (ex. « K7P2QX ») pour l'URL /quote/:token. */
-export function publicToken(length = 6): string {
+/** Jeton public aléatoire pour l'URL /quote/:token (24 caractères ≈ 120 bits : impossible à deviner). */
+export function publicToken(length = 24): string {
   const bytes = new Uint8Array(length);
   crypto.getRandomValues(bytes);
   return Array.from(bytes, (b) => TOKEN_ALPHABET[b % TOKEN_ALPHABET.length]).join('');

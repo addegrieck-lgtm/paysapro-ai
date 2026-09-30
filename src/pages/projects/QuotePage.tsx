@@ -19,7 +19,7 @@ import { useProjectData } from '../../hooks/useData';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge, Card, CardTitle } from '../../components/ui/Card';
 import { Button, ButtonLink } from '../../components/ui/Button';
-import { NumberField, SelectField, TextArea } from '../../components/ui/Form';
+import { NumberField, SelectField, TextArea, TextField } from '../../components/ui/Form';
 import { Alert, ConfirmDialog, Dialog, useToast } from '../../components/ui/Feedback';
 import { QuoteDocument } from '../../components/QuoteDocument';
 import { FollowUpDialog } from '../../components/FollowUpDialog';
@@ -35,6 +35,11 @@ import { canShareFiles, downloadBlob, shareNative } from '../../lib/share';
 import { formatMoney } from '../../utils/number';
 import { formatLongDate, formatTime } from '../../utils/date';
 import { hasSapLines, sapMissingFields } from '../../features/sap/sap';
+import { canPublishOnline, hasStrongToken, publicQuoteUrl, publishQuote } from '../../features/quotes/publish';
+import { publicToken as newPublicToken } from '../../utils/id';
+import { getState } from '../../lib/store';
+import { copyText } from '../../lib/share';
+import { Link2 } from 'lucide-react';
 
 export function QuotePage() {
   const { id } = useParams();
@@ -43,6 +48,7 @@ export function QuotePage() {
   const toast = useToast();
   const [pdfBusy, setPdfBusy] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [link, setLink] = useState<string | null>(null);
   const [followUp, setFollowUp] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmRefuse, setConfirmRefuse] = useState(false);
@@ -103,7 +109,8 @@ export function QuotePage() {
 
   const presentToClient = () => {
     markSent(quote.id);
-    navigate(`/quote/${quote.publicToken}`);
+    // markSent peut avoir remplacé un ancien jeton court : on lit le jeton à jour.
+    navigate(`/quote/${getState().quotes.find((q) => q.id === quote.id)?.publicToken ?? quote.publicToken}`);
   };
 
   return (
@@ -279,12 +286,38 @@ export function QuotePage() {
           >
             Écrire un message au client
           </Button>
-          <Button block variant="secondary" disabled>
-            Lien public en ligne — disponible prochainement
-          </Button>
-          <p className="text-xs text-muted">
-            Le lien public (/quote/{quote.publicToken}) nécessitera la future version en ligne : aujourd’hui, vos données restent sur cet appareil.
-          </p>
+          {canPublishOnline() ? (
+            <>
+              <Button
+                block
+                variant="soft"
+                icon={<Link2 className="h-5 w-5" />}
+                onClick={async () => {
+                  markSent(quote.id);
+                  let current = getState().quotes.find((q) => q.id === quote.id);
+                  if (current && !hasStrongToken(current)) {
+                    updateQuote(quote.id, { publicToken: newPublicToken() });
+                    current = getState().quotes.find((q) => q.id === quote.id);
+                  }
+                  if (!current?.publicToken || !(await publishQuote(current))) return toast('Le lien n’a pas pu être créé. Vérifiez votre connexion.', 'danger');
+                  const url = publicQuoteUrl(current.publicToken);
+                  setLink(url);
+                  if (await copyText(url)) toast('✓ Lien copié : collez-le dans un e-mail ou un SMS.');
+                }}
+              >
+                Copier le lien du devis
+              </Button>
+              {link && <TextField label="Lien à envoyer au client" value={link} onChange={() => undefined} readOnly onFocus={(e) => e.currentTarget.select()} />}
+              <p className="text-xs text-muted">Votre client ouvre ce lien sur son téléphone, sans compte : il consulte le devis, l’accepte et le signe. Il ne voit ni vos coûts, ni vos marges, ni vos notes.</p>
+            </>
+          ) : (
+            <>
+              <Button block variant="secondary" disabled>
+                Lien public en ligne — disponible prochainement
+              </Button>
+              <p className="text-xs text-muted">Le lien public nécessite un compte en ligne : ici, vos données restent sur cet appareil.</p>
+            </>
+          )}
         </div>
       </Dialog>
 
