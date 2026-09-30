@@ -8,6 +8,7 @@ import { SelectField, TextField } from '../../components/ui/Form';
 import { Alert, ConfirmDialog, useToast } from '../../components/ui/Feedback';
 import { inviteMember, listTeam, removeMember, revokeInvitation, ROLES, roleLabel, setMemberRole, type TeamInvitation, type TeamMember } from '../../features/team/actions';
 import { getCurrentPlan } from '../../features/plans/plans';
+import { emailEnabled, sendInvitationEmail } from '../../features/email/email';
 import { CLOUD_ENABLED, getCloudSession, type MemberRole } from '../../services/cloud/client';
 
 const ROLE_OPTIONS = ROLES.map((r) => ({ value: r.value, label: r.label }));
@@ -112,9 +113,11 @@ export function TeamPage() {
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                await inviteMember(email, role);
+                const id = await inviteMember(email, role);
                 setEmail('');
-              }, '✓ Invitation enregistrée');
+                // L'invitation est enregistrée même si l'e-mail ne part pas : on le signale sans bloquer.
+                if (emailEnabled()) await sendInvitationEmail(id).catch((err) => toast(err instanceof Error ? err.message : 'E-mail non envoyé.', 'danger'));
+              }, emailEnabled() ? '✓ Invitation enregistrée et envoyée par e-mail' : '✓ Invitation enregistrée');
             }}
           >
             <TextField label="E-mail du collègue" type="email" value={email} onChange={setEmail} autoComplete="off" inputMode="email" />
@@ -125,7 +128,7 @@ export function TeamPage() {
           </form>
           <p className="mt-2 text-sm text-muted">{ROLES.find((r) => r.value === role)?.hint}.</p>
           <Alert tone="info">
-            Aucun e-mail n’est envoyé automatiquement pour l’instant. Demandez à votre collègue de créer son compte sur l’application avec cette adresse : il rejoindra votre entreprise dès sa première
+            {emailEnabled() ? 'Un e-mail d’invitation est envoyé. ' : 'Aucun e-mail n’est envoyé automatiquement pour l’instant. '}Demandez à votre collègue de créer son compte sur l’application avec cette adresse : il rejoindra votre entreprise dès sa première
             connexion.
           </Alert>
           {invitations.length > 0 && (

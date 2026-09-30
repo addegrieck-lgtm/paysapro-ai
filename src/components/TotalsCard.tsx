@@ -6,6 +6,7 @@ import { Card, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { NumberField } from './ui/Form';
 import { Alert } from './ui/Feedback';
+import { canUseFeature, hasFeature } from '../features/plans/plans';
 
 /**
  * Récapitulatif des prix : ce que verra le client (HT, TVA, TTC, acompte)
@@ -24,6 +25,7 @@ export function TotalsCard({
   defaultMargin: number;
   onApplyMargin?: (percent: number) => void;
 }) {
+  const showMargin = hasFeature('profitability');
   const [margin, setMargin] = useState<number | null>(defaultMargin);
   const groups = (Object.keys(totals.saleByGroup) as PriceGroup[]).filter((g) => totals.saleByGroup[g] > 0);
 
@@ -49,7 +51,8 @@ export function TotalsCard({
         {totals.depositPercent > 0 && <Line label={`Acompte (${formatPercent(totals.depositPercent)})`} value={formatMoney(totals.depositAmount)} />}
       </dl>
 
-      <div className="mt-4 rounded-xl border border-dashed border-line bg-surface-2/60 p-4">
+      {!showMargin && <p className="mt-4 text-sm text-muted">{canUseFeature('profitability').reason}</p>}
+      <div className={showMargin ? 'mt-4 rounded-xl border border-dashed border-line bg-surface-2/60 p-4' : 'hidden'}>
         <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted">
           <Lock className="h-3.5 w-3.5" aria-hidden /> Visible uniquement par vous
         </p>

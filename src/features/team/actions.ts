@@ -77,11 +77,13 @@ export async function listTeam(): Promise<{ members: TeamMember[]; invitations: 
   };
 }
 
-export async function inviteMember(email: string, role: MemberRole): Promise<void> {
+/** Enregistre l'invitation et renvoie son identifiant. */
+export async function inviteMember(email: string, role: MemberRole): Promise<string> {
   const { db } = context();
   if (!email.trim() || !isValidEmail(email)) throw new TeamError('Adresse e-mail invalide.');
-  const { error } = await db.rpc('invite_member', { p_email: email.trim().toLowerCase(), p_role: role });
+  const { data, error } = await db.rpc('invite_member', { p_email: email.trim().toLowerCase(), p_role: role });
   if (error) fail(error);
+  return data as string;
 }
 
 export async function revokeInvitation(id: string): Promise<void> {

@@ -23,6 +23,7 @@ import { useAppState } from '../lib/store';
 import { exitDemo } from '../features/settings/dataActions';
 import { getCurrentPlan, priceLabel } from '../features/plans/plans';
 import { APP_CONFIG } from '../config/app';
+import { useCan } from '../features/team/permissions';
 import { CLOUD_ENABLED } from '../services/cloud/client';
 
 const SIDEBAR = [
@@ -126,6 +127,7 @@ export function AppLayout() {
   const { pathname } = useLocation();
   const [quick, setQuick] = useState(false);
   const plan = getCurrentPlan();
+  const canWrite = useCan('write');
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -139,9 +141,11 @@ export function AppLayout() {
           <Logo />
           <NotificationBell />
         </div>
-        <ButtonLink to="/quotes/new" icon={<Plus className="h-5 w-5" />} block>
-          Nouveau devis
-        </ButtonLink>
+        {canWrite && (
+          <ButtonLink to="/quotes/new" icon={<Plus className="h-5 w-5" />} block>
+            Nouveau devis
+          </ButtonLink>
+        )}
         <nav aria-label="Navigation principale" className="mt-5 flex flex-1 flex-col gap-0.5 overflow-y-auto">
           {SIDEBAR.map(({ to, label, icon: Icon, end }) => (
             <NavLink
@@ -184,8 +188,9 @@ export function AppLayout() {
             <button
               type="button"
               onClick={() => setQuick(true)}
+              disabled={!canWrite}
               aria-label="Créer : devis, client, chantier ou photo"
-              className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-on-brand shadow-lg ring-4 ring-bg active:scale-95"
+              className="-mt-6 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-on-brand shadow-lg ring-4 ring-bg active:scale-95 disabled:opacity-40"
             >
               <Plus className="h-7 w-7" />
             </button>

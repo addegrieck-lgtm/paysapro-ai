@@ -20,6 +20,7 @@ import { useProjectData } from '../../hooks/useData';
 import { PageHeader, StickyActions } from '../../components/ui/PageHeader';
 import { Card, CardTitle } from '../../components/ui/Card';
 import { Button, IconButton } from '../../components/ui/Button';
+import { hasFeature } from '../../features/plans/plans';
 import { Checkbox, Chip, NumberField, Segmented, SelectField, TextArea, TextField } from '../../components/ui/Form';
 import { Alert, Dialog, EmptyState, useToast } from '../../components/ui/Feedback';
 import { CatalogPicker } from '../../components/CatalogPicker';
@@ -374,7 +375,7 @@ function LineCard({
         </div>
         <div className="shrink-0 text-right">
           <div className="font-semibold tabular-nums">{formatMoney(computed.saleTotal)}</div>
-          <div className={`text-xs tabular-nums ${computed.marginTotal < 0 ? 'text-danger' : 'text-muted'}`}>marge {formatMoney(computed.marginTotal)}</div>
+          {hasFeature('profitability') && <div className={`text-xs tabular-nums ${computed.marginTotal < 0 ? 'text-danger' : 'text-muted'}`}>marge {formatMoney(computed.marginTotal)}</div>}
         </div>
         {open ? <ChevronUp className="mt-0.5 h-5 w-5 text-muted" aria-hidden /> : <ChevronDown className="mt-0.5 h-5 w-5 text-muted" aria-hidden />}
       </button>

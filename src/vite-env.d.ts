@@ -13,6 +13,7 @@ interface ImportMetaEnv {
   readonly VITE_LEGAL_EMAIL?: string;
   readonly VITE_DATA_REGION?: string;
   readonly VITE_SENTRY_DSN?: string;
+  readonly VITE_EMAIL_ENABLED?: string;
   readonly VITE_DEMO_MODE?: string;
   readonly VITE_AI_DEMO_MODE?: string;
   readonly VITE_CONTACT_EMAIL?: string;

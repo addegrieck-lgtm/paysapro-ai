@@ -16,6 +16,7 @@ import { isDemoSpace } from './services/storage';
 import { CLOUD_ENABLED } from './services/cloud/client';
 import { watchAuth } from './features/auth/actions';
 import { initMonitoring } from './services/monitoring';
+import { PERMISSION_MESSAGE, useCan, type Permission } from './features/team/permissions';
 const LoginPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.SignupPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -123,6 +124,21 @@ function RequireFeature({ feature, children }: { feature: Feature; children: Rea
   );
 }
 
+/** Écran réservé à certains rôles (la base refuse de toute façon l'écriture). Sans effet en mode local ou démo. */
+function RequireRole({ permission, children }: { permission: Permission; children: ReactNode }) {
+  const allowed = useCan(permission);
+  if (allowed) return <>{children}</>;
+  return (
+    <div className="mx-auto max-w-md space-y-4 pt-10 text-center">
+      <h1 className="text-2xl font-bold">Accès limité</h1>
+      <p className="text-muted">{PERMISSION_MESSAGE[permission]}</p>
+      <Link to="/app" className="inline-flex min-h-12 items-center rounded-xl bg-brand px-5 font-semibold text-on-brand">
+        Retour au tableau de bord
+      </Link>
+    </div>
+  );
+}
+
 function AppRoutes() {
   const { ready, loadError } = useAppState();
   const toast = useToast();
@@ -188,9 +204,9 @@ function AppRoutes() {
       >
         <Route path="app" element={<DashboardPage />} />
         <Route path="dashboard" element={<Navigate to="/app" replace />} />
-        <Route path="quotes/new" element={<NewQuotePage mode="quote" />} />
+        <Route path="quotes/new" element={<RequireRole permission="write"><NewQuotePage mode="quote" /></RequireRole>} />
         <Route path="projects" element={<ProjectsPage />} />
-        <Route path="projects/new" element={<NewQuotePage mode="project" />} />
+        <Route path="projects/new" element={<RequireRole permission="write"><NewQuotePage mode="project" /></RequireRole>} />
         <Route path="projects/:id" element={<ProjectPage />} />
         <Route path="projects/:id/photos" element={<PhotosPage />} />
         <Route path="projects/:id/measures" element={<RequireFeature feature="measurements"><MeasuresPage /></RequireFeature>} />
@@ -199,23 +215,23 @@ function AppRoutes() {
         <Route path="projects/:id/work" element={<WorkPage />} />
         <Route path="projects/:id/visualize" element={<VisualizePage />} />
         <Route path="clients" element={<ClientsPage />} />
-        <Route path="clients/new" element={<ClientFormPage />} />
+        <Route path="clients/new" element={<RequireRole permission="write"><ClientFormPage /></RequireRole>} />
         <Route path="clients/:id" element={<ClientPage />} />
-        <Route path="clients/:id/edit" element={<ClientFormPage />} />
+        <Route path="clients/:id/edit" element={<RequireRole permission="write"><ClientFormPage /></RequireRole>} />
         <Route path="quotes" element={<QuotesPage />} />
-        <Route path="catalog" element={<CatalogPage />} />
-        <Route path="templates" element={<RequireFeature feature="templates"><TemplatesPage /></RequireFeature>} />
+        <Route path="catalog" element={<RequireRole permission="manage"><CatalogPage /></RequireRole>} />
+        <Route path="templates" element={<RequireRole permission="manage"><RequireFeature feature="templates"><TemplatesPage /></RequireFeature></RequireRole>} />
         <Route path="planning" element={<RequireFeature feature="planning"><PlanningPage /></RequireFeature>} />
         <Route path="stats" element={<RequireFeature feature="statistics"><StatsPage /></RequireFeature>} />
         <Route path="tools" element={<ToolsPage />} />
         <Route path="more" element={<MorePage />} />
         <Route path="help" element={<HelpPage />} />
-        <Route path="company" element={<CompanyPage />} />
+        <Route path="company" element={<RequireRole permission="manage"><CompanyPage /></RequireRole>} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="settings/account" element={<AccountPage />} />
         <Route path="settings/company" element={<Navigate to="/company" replace />} />
         <Route path="settings/catalog" element={<Navigate to="/catalog" replace />} />
-        <Route path="settings/quotes" element={<QuoteSettingsPage />} />
+        <Route path="settings/quotes" element={<RequireRole permission="manage"><QuoteSettingsPage /></RequireRole>} />
         <Route path="settings/notifications" element={<NotificationSettingsPage />} />
         <Route path="settings/data" element={<DataPage />} />
         <Route path="settings/ai" element={<AISettingsPage />} />

@@ -126,3 +126,17 @@ describe('Mode cloud — authentification', () => {
     expect(unknown).toBe('Une erreur est survenue. Réessayez dans un instant.');
   });
 });
+
+describe('Mode cloud — rôles', () => {
+  it('chaque rôle a les droits prévus (miroir des règles de la base)', async () => {
+    const { roleCan } = await import('../src/features/team/permissions');
+    const table = (['admin', 'office', 'field', 'read_only', null] as const).map((r) => [roleCan(r, 'write'), roleCan(r, 'manage'), roleCan(r, 'admin')]);
+    expect(table).toEqual([
+      [true, true, true],
+      [true, true, false],
+      [true, false, false],
+      [false, false, false],
+      [true, true, true], // mode local ou démonstration : un seul utilisateur
+    ]);
+  });
+});

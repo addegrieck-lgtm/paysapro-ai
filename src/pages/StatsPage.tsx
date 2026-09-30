@@ -8,6 +8,7 @@ import { computeStats, signedByMonth } from '../features/stats/stats';
 import { analytics, funnelProgress } from '../services/analytics/AnalyticsProvider';
 import { formatMoney } from '../utils/number';
 import type { AnalyticsEvent } from '../types';
+import { canUseFeature, hasFeature } from '../features/plans/plans';
 
 export function StatsPage() {
   const { projects, quotes, clients } = useAppState();
@@ -48,8 +49,14 @@ export function StatsPage() {
 
       <Card>
         <CardTitle icon={<Lock className="h-4 w-4" />}>Marge des devis signés</CardTitle>
-        <p className="text-2xl font-bold text-success">{formatMoney(stats.signedMargin)}</p>
-        <p className="text-sm text-muted">Visible uniquement par vous. Calculée à partir des coûts renseignés dans vos devis.</p>
+        {hasFeature('profitability') ? (
+          <>
+            <p className="text-2xl font-bold text-success">{formatMoney(stats.signedMargin)}</p>
+            <p className="text-sm text-muted">Visible uniquement par vous. Calculée à partir des coûts renseignés dans vos devis.</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted">{canUseFeature('profitability').reason}</p>
+        )}
       </Card>
 
       <Card>

@@ -39,7 +39,8 @@ import { canPublishOnline, hasStrongToken, publicQuoteUrl, publishQuote } from '
 import { publicToken as newPublicToken } from '../../utils/id';
 import { getState } from '../../lib/store';
 import { copyText } from '../../lib/share';
-import { Link2 } from 'lucide-react';
+import { Link2, Mail } from 'lucide-react';
+import { emailEnabled, sendQuoteEmail } from '../../features/email/email';
 
 export function QuotePage() {
   const { id } = useParams();
@@ -49,6 +50,7 @@ export function QuotePage() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
   const [link, setLink] = useState<string | null>(null);
+  const [mailBusy, setMailBusy] = useState(false);
   const [followUp, setFollowUp] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [confirmRefuse, setConfirmRefuse] = useState(false);
@@ -288,6 +290,35 @@ export function QuotePage() {
           </Button>
           {canPublishOnline() ? (
             <>
+              {emailEnabled() && (
+                <Button
+                  block
+                  size="lg"
+                  disabled={mailBusy}
+                  icon={mailBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mail className="h-5 w-5" />}
+                  onClick={async () => {
+                    setMailBusy(true);
+                    try {
+                      markSent(quote.id);
+                      let current = getState().quotes.find((q) => q.id === quote.id);
+                      if (current && !hasStrongToken(current)) {
+                        updateQuote(quote.id, { publicToken: newPublicToken() });
+                        current = getState().quotes.find((q) => q.id === quote.id);
+                      }
+                      if (!current || !(await publishQuote(current))) throw new Error('Le lien du devis n’a pas pu être créé. Vérifiez votre connexion.');
+                      await sendQuoteEmail(quote.id);
+                      toast(`✓ Devis envoyé par e-mail à ${client?.email ?? 'votre client'}`);
+                      setSendOpen(false);
+                    } catch (e) {
+                      toast(e instanceof Error ? e.message : 'L’e-mail n’a pas pu être envoyé.', 'danger');
+                    } finally {
+                      setMailBusy(false);
+                    }
+                  }}
+                >
+                  Envoyer par e-mail{client?.email ? ` à ${client.email}` : ''}
+                </Button>
+              )}
               <Button
                 block
                 variant="soft"
