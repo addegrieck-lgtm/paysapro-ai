@@ -51,10 +51,11 @@ export function AccountPage() {
         <CardTitle icon={<ShieldCheck className="h-5 w-5" />}>Plan</CardTitle>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-lg font-bold">{plan.name}</span>
-          <Badge tone="success">Gratuit pendant la bêta</Badge>
-          {APP_CONFIG.testMode && <Badge>Mode test</Badge>}
+          {APP_CONFIG.betaMode && <Badge tone="success">BÊTA — offert</Badge>}
         </div>
-        <p className="mt-2 text-sm text-muted">Toutes les fonctionnalités sont incluses. Aucun paiement ni abonnement n’est actif.</p>
+        <p className="mt-2 text-sm text-muted">
+          {APP_CONFIG.betaMode ? 'Toutes les fonctionnalités sont incluses. Aucun paiement requis.' : 'Détail dans Paramètres → Abonnement.'}
+        </p>
       </Card>
       {cloud && (
         <Card>

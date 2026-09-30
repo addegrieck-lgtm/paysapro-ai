@@ -74,6 +74,14 @@ export async function createCompany(name: string, settings: object): Promise<str
   return data as string;
 }
 
+/** Abonnement de l'entreprise courante (lecture seule : la base refuse toute écriture depuis le navigateur). */
+export async function fetchSubscription(): Promise<{ planId: string; status: string; currentPeriodEnd: string | null } | null> {
+  if (!supabase || !session?.companyId) return null;
+  const { data, error } = await supabase.from('subscriptions').select('plan_id, status, current_period_end').eq('company_id', session.companyId).maybeSingle();
+  if (error || !data) return null;
+  return { planId: data.plan_id as string, status: data.status as string, currentPeriodEnd: (data.current_period_end as string | null) ?? null };
+}
+
 export function clearCloudSession(): void {
   session = null;
 }

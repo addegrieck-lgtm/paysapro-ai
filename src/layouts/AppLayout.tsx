@@ -21,7 +21,8 @@ import { NotificationBell } from '../components/NotificationBell';
 import { QuickActionsDrawer } from '../components/QuickActions';
 import { useAppState } from '../lib/store';
 import { exitDemo } from '../features/settings/dataActions';
-import { getCurrentPlan } from '../features/plans/plans';
+import { getCurrentPlan, priceLabel } from '../features/plans/plans';
+import { APP_CONFIG } from '../config/app';
 import { CLOUD_ENABLED } from '../services/cloud/client';
 
 const SIDEBAR = [
@@ -145,9 +146,9 @@ export function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <NavLink to="/settings/beta" className="mt-3 rounded-xl border border-line bg-surface-2 p-3 text-sm hover:border-brand/40">
-          <span className="block font-semibold text-ink">{plan.name}</span>
-          <span className="text-muted">Gratuit pendant la bêta</span>
+        <NavLink to="/settings/subscription" className="mt-3 rounded-xl border border-line bg-surface-2 p-3 text-sm hover:border-brand/40">
+          <span className="block font-semibold text-ink">{APP_CONFIG.betaMode ? `BÊTA — ${plan.name} offert` : plan.name}</span>
+          <span className="text-muted">{APP_CONFIG.betaMode ? 'Gratuit, sans carte bancaire' : priceLabel(plan)}</span>
         </NavLink>
       </aside>
 

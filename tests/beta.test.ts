@@ -6,7 +6,7 @@ import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings, need
 import { computeTotals } from '../src/features/quotes/pricing';
 import { toPublicQuote } from '../src/features/quotes/publicView';
 import { linesFromTemplate, templateLinesFrom } from '../src/features/quotes/lines';
-import { canUseFeature, getCurrentPlan, hasFeature, PLANS } from '../src/features/plans/plans';
+import { canUseFeature, FEATURES, getCurrentPlan, hasFeature, NO_PLAN, planFor, PLANS } from '../src/features/plans/plans';
 import { APP_CONFIG } from '../src/config/app';
 import { emptyLead, LocalBetaLeadProvider, sanitize, validateContact, validateLead } from '../src/services/forms/forms';
 import { funnelProgress, LocalAnalyticsProvider } from '../src/services/analytics/AnalyticsProvider';
@@ -83,13 +83,32 @@ describe('plans (bêta : Premium Max pour tous)', () => {
     expect(APP_CONFIG.testMode).toBe(true);
     expect(APP_CONFIG.paymentsEnabled).toBe(false);
     expect(APP_CONFIG.subscriptionsEnabled).toBe(false);
-    expect(getCurrentPlan().id).toBe('PREMIUM_MAX');
-    expect(hasFeature('ai_assistant')).toBe(true);
-    expect(canUseFeature('pdf').allowed).toBe(true);
+    expect(APP_CONFIG.betaMode).toBe(true);
+    expect(getCurrentPlan()).toMatchObject({ id: 'BETA', name: 'Premium Max', monthlyPriceHT: 0, paymentRequired: false });
+    expect(Object.keys(FEATURES).every((f) => hasFeature(f as keyof typeof FEATURES))).toBe(true);
+    expect(canUseFeature('quotes_pdf').allowed).toBe(true);
   });
-  it('les autres plans existent sans prix inventé', () => {
-    expect(PLANS.PRO.priceLabel).toBe('À venir');
-    expect(canUseFeature('online_payment', PLANS.FREE).allowed).toBe(false);
+  it('tarifs : Starter 19 €, Pro 39 €, Business 69 € HT par mois', () => {
+    expect([PLANS.STARTER, PLANS.PRO, PLANS.BUSINESS].map((p) => p.monthlyPriceHT)).toEqual([19, 39, 69]);
+    expect([PLANS.STARTER, PLANS.PRO, PLANS.BUSINESS].every((p) => p.paymentRequired)).toBe(true);
+  });
+  it('bêta désactivée : le plan vient de l’abonnement, chaque offre inclut la précédente', () => {
+    const sub = (planId: string, status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'inactive' | 'beta') => ({ planId, status, currentPeriodEnd: null });
+    expect(planFor(false, null)).toBe(NO_PLAN);
+    expect(planFor(false, sub('pro', 'canceled'))).toBe(NO_PLAN);
+    expect(planFor(false, sub('beta', 'beta'))).toBe(NO_PLAN);
+    expect(planFor(false, sub('inconnu', 'active'))).toBe(NO_PLAN);
+    expect(planFor(false, sub('starter', 'active'))).toBe(PLANS.STARTER);
+    expect(planFor(false, sub('pro', 'trialing'))).toBe(PLANS.PRO);
+    expect(planFor(false, sub('business', 'past_due'))).toBe(PLANS.BUSINESS);
+    expect(planFor(true, sub('starter', 'active'))).toBe(PLANS.BETA);
+
+    expect(canUseFeature('planning', PLANS.STARTER)).toEqual({ allowed: false, reason: 'Fonctionnalité incluse à partir de l’offre Pro.' });
+    expect(canUseFeature('planning', PLANS.PRO).allowed).toBe(true);
+    expect(canUseFeature('profitability', PLANS.PRO).allowed).toBe(false);
+    expect(canUseFeature('quotes_pdf', NO_PLAN).allowed).toBe(false);
+    expect(PLANS.STARTER.features.every((f) => PLANS.PRO.features.includes(f))).toBe(true);
+    expect(PLANS.PRO.features.every((f) => PLANS.BUSINESS.features.includes(f))).toBe(true);
   });
 });
 

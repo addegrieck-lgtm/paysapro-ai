@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
-import { HashRouter, Navigate, Route, Routes, useLocation } from 'react-router';
+import { HashRouter, Link, Navigate, Route, Routes, useLocation } from 'react-router';
+import { canUseFeature, FEATURES, type Feature } from './features/plans/plans';
 import { loadAll, onStorageError, useAppState } from './lib/store';
 import { requestPersistentStorage } from './lib/pwa';
 import { ToastProvider, useToast } from './components/ui/Feedback';
@@ -60,6 +61,7 @@ const DataPage = lazy(() => import('./pages/settings/DataPage').then((m) => ({ d
 const AISettingsPage = lazy(() => import('./pages/settings/AISettingsPage').then((m) => ({ default: m.AISettingsPage })));
 const AppearancePage = lazy(() => import('./pages/settings/AppearancePage').then((m) => ({ default: m.AppearancePage })));
 const BetaProgramPage = lazy(() => import('./pages/settings/BetaProgramPage').then((m) => ({ default: m.BetaProgramPage })));
+const SubscriptionPage = lazy(() => import('./pages/settings/SubscriptionPage').then((m) => ({ default: m.SubscriptionPage })));
 const AboutPage = lazy(() => import('./pages/settings/AboutPage').then((m) => ({ default: m.AboutPage })));
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -101,6 +103,22 @@ function RequireWorkspace({ children }: { children: ReactNode }) {
   if (CLOUD_ENABLED && !demo && !user) return <Navigate to="/login" replace />;
   if (!settings.onboardingDone) return <Navigate to="/onboarding" replace />;
   return <>{children}</>;
+}
+
+/** Écran réservé à certaines offres. Sans effet pendant la bêta (toutes les fonctionnalités sont ouvertes). */
+function RequireFeature({ feature, children }: { feature: Feature; children: ReactNode }) {
+  useAppState(); // se met à jour quand l'abonnement change
+  const access = canUseFeature(feature);
+  if (access.allowed) return <>{children}</>;
+  return (
+    <div className="mx-auto max-w-md space-y-4 pt-10 text-center">
+      <h1 className="text-2xl font-bold">{FEATURES[feature].label}</h1>
+      <p className="text-muted">{access.reason}</p>
+      <Link to="/settings/subscription" className="inline-flex min-h-12 items-center rounded-xl bg-brand px-5 font-semibold text-on-brand">
+        Voir les offres
+      </Link>
+    </div>
+  );
 }
 
 function AppRoutes() {
@@ -184,9 +202,9 @@ function AppRoutes() {
         <Route path="clients/:id/edit" element={<ClientFormPage />} />
         <Route path="quotes" element={<QuotesPage />} />
         <Route path="catalog" element={<CatalogPage />} />
-        <Route path="templates" element={<TemplatesPage />} />
-        <Route path="planning" element={<PlanningPage />} />
-        <Route path="stats" element={<StatsPage />} />
+        <Route path="templates" element={<RequireFeature feature="templates"><TemplatesPage /></RequireFeature>} />
+        <Route path="planning" element={<RequireFeature feature="planning"><PlanningPage /></RequireFeature>} />
+        <Route path="stats" element={<RequireFeature feature="statistics"><StatsPage /></RequireFeature>} />
         <Route path="tools" element={<ToolsPage />} />
         <Route path="more" element={<MorePage />} />
         <Route path="help" element={<HelpPage />} />
@@ -201,6 +219,7 @@ function AppRoutes() {
         <Route path="settings/ai" element={<AISettingsPage />} />
         <Route path="settings/appearance" element={<AppearancePage />} />
         <Route path="settings/beta" element={<BetaProgramPage />} />
+        <Route path="settings/subscription" element={<SubscriptionPage />} />
         <Route path="about" element={<AboutPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

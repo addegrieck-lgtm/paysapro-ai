@@ -1,79 +1,118 @@
-// Plans et fonctionnalités : architecture prête pour la monétisation future.
-// Pendant la bêta (testMode), getCurrentPlan() renvoie toujours PREMIUM_MAX : aucune restriction.
+// Plans, tarifs et fonctionnalités : CONFIGURATION CENTRALE.
+//
+// Tout prix, quota ou contenu d'offre se modifie ici et nulle part ailleurs.
+//
+// • Mode bêta (APP_CONFIG.betaMode) : tout le monde a le plan BETA = jeu de fonctionnalités
+//   Premium Max, 0 €, sans carte bancaire.
+// • Bêta désactivée : le plan vient de l'abonnement de l'entreprise (table `subscriptions`,
+//   écrite uniquement côté serveur par le webhook Stripe).
+//
+// ⚠️ Masquer un écran dans l'application n'est pas une protection. Ce contrôle-ci sert à l'interface ;
+// tout ce qui coûte ou engage (IA distante, nombre d'utilisateurs, paiement) doit aussi être vérifié
+// côté serveur à partir de la table `subscriptions`.
 import { APP_CONFIG, type PlanId } from '../../config/app';
+import type { SubscriptionInfo } from '../../types';
+import { getState } from '../../lib/store';
 
 export type Feature =
-  | 'unlimited_quotes'
-  | 'unlimited_clients'
-  | 'pdf'
-  | 'signature'
+  | 'quotes_pdf'
+  | 'clients_projects'
+  | 'photos'
   | 'catalog'
+  | 'signature'
+  | 'ai_basic'
+  | 'measurements'
   | 'templates'
-  | 'ai_assistant'
-  | 'ai_photo_analysis'
+  | 'client_portal'
   | 'planning'
   | 'statistics'
-  | 'custom_branding'
-  | 'cloud_sync'
+  | 'sap'
+  | 'profitability'
+  | 'team'
+  | 'ai_advanced'
   | 'online_payment';
+
+/** available : utilisable aujourd'hui · planned : annoncé, pas encore développé (jamais vendu comme disponible) */
+export const FEATURES: Record<Feature, { label: string; status: 'available' | 'planned' }> = {
+  quotes_pdf: { label: 'Devis et PDF à vos couleurs', status: 'available' },
+  clients_projects: { label: 'Clients et chantiers', status: 'available' },
+  photos: { label: 'Photos de chantier', status: 'available' },
+  catalog: { label: 'Catalogue de prestations', status: 'available' },
+  signature: { label: 'Signature du devis', status: 'available' },
+  ai_basic: { label: 'Assistant : suggestions de prestations et description', status: 'available' },
+  measurements: { label: 'Mesures et calculs de quantités', status: 'available' },
+  templates: { label: 'Modèles de devis', status: 'available' },
+  client_portal: { label: 'Lien client : consultation et signature en ligne', status: 'available' },
+  planning: { label: 'Planning des chantiers', status: 'available' },
+  statistics: { label: 'Statistiques', status: 'available' },
+  sap: { label: 'Mode SAP (services à la personne)', status: 'available' },
+  profitability: { label: 'Marge et rentabilité des devis', status: 'available' },
+  team: { label: 'Équipe : plusieurs utilisateurs et rôles', status: 'planned' },
+  ai_advanced: { label: 'IA avancée (analyse par un modèle distant)', status: 'planned' },
+  online_payment: { label: 'Paiement en ligne de l’acompte', status: 'planned' },
+};
 
 export interface Plan {
   id: PlanId;
   name: string;
-  /** Prix non défini tant que l'offre n'est pas annoncée */
-  priceLabel: string;
-  available: boolean;
+  /** Prix mensuel hors taxes, en euros */
+  monthlyPriceHT: number;
+  paymentRequired: boolean;
   features: Feature[];
+  limits: {
+    /** Utilisateurs inclus (appliqué quand la gestion d'équipe sera disponible) */
+    users: number;
+    /** Requêtes d'IA distante par mois (appliqué côté serveur quand l'IA distante sera disponible) */
+    aiRequestsPerMonth: number;
+  };
 }
 
-const ALL: Feature[] = [
-  'unlimited_quotes',
-  'unlimited_clients',
-  'pdf',
-  'signature',
-  'catalog',
-  'templates',
-  'ai_assistant',
-  'ai_photo_analysis',
-  'planning',
-  'statistics',
-  'custom_branding',
-  'cloud_sync',
-  'online_payment',
-];
+const STARTER: Feature[] = ['quotes_pdf', 'clients_projects', 'photos', 'catalog', 'signature', 'ai_basic'];
+const PRO: Feature[] = [...STARTER, 'measurements', 'templates', 'client_portal', 'planning', 'statistics', 'sap', 'team'];
+const BUSINESS: Feature[] = [...PRO, 'profitability', 'ai_advanced', 'online_payment'];
 
 export const PLANS: Record<PlanId, Plan> = {
-  FREE: { id: 'FREE', name: 'Starter', priceLabel: 'À venir', available: false, features: ['pdf', 'catalog', 'signature'] },
-  PRO: {
-    id: 'PRO',
-    name: 'Pro',
-    priceLabel: 'À venir',
-    available: false,
-    features: ['unlimited_quotes', 'unlimited_clients', 'pdf', 'signature', 'catalog', 'templates', 'custom_branding'],
-  },
-  PREMIUM: {
-    id: 'PREMIUM',
-    name: 'Premium',
-    priceLabel: 'À venir',
-    available: false,
-    features: ['unlimited_quotes', 'unlimited_clients', 'pdf', 'signature', 'catalog', 'templates', 'custom_branding', 'ai_assistant', 'planning', 'statistics'],
-  },
-  PREMIUM_MAX: { id: 'PREMIUM_MAX', name: 'Premium Max', priceLabel: '0 € pendant la bêta', available: true, features: ALL },
+  BETA: { id: 'BETA', name: 'Premium Max', monthlyPriceHT: 0, paymentRequired: false, features: BUSINESS, limits: { users: 10, aiRequestsPerMonth: 1500 } },
+  STARTER: { id: 'STARTER', name: 'Starter', monthlyPriceHT: 19, paymentRequired: true, features: STARTER, limits: { users: 1, aiRequestsPerMonth: 50 } },
+  PRO: { id: 'PRO', name: 'Pro', monthlyPriceHT: 39, paymentRequired: true, features: PRO, limits: { users: 3, aiRequestsPerMonth: 300 } },
+  BUSINESS: { id: 'BUSINESS', name: 'Business', monthlyPriceHT: 69, paymentRequired: true, features: BUSINESS, limits: { users: 10, aiRequestsPerMonth: 1500 } },
 };
 
+export const PAID_PLANS: Plan[] = [PLANS.STARTER, PLANS.PRO, PLANS.BUSINESS];
+
+/** Sans abonnement actif (bêta terminée) : consultation uniquement, aucune fonctionnalité payante. */
+export const NO_PLAN: Plan = { id: 'STARTER', name: 'Aucun abonnement', monthlyPriceHT: 0, paymentRequired: true, features: [], limits: { users: 1, aiRequestsPerMonth: 0 } };
+
+export function priceLabel(plan: Plan): string {
+  return plan.monthlyPriceHT === 0 ? '0 €' : `${plan.monthlyPriceHT} € HT/mois`;
+}
+
+const ACTIVE_STATUSES = new Set(['active', 'trialing', 'past_due']);
+
+/** Plan correspondant à un abonnement (fonction pure, testée). */
+export function planFor(betaMode: boolean, subscription: SubscriptionInfo | null): Plan {
+  if (betaMode) return PLANS.BETA;
+  if (!subscription || !ACTIVE_STATUSES.has(subscription.status)) return NO_PLAN;
+  const id = subscription.planId.toUpperCase() as PlanId;
+  return id !== 'BETA' && PLANS[id] ? PLANS[id] : NO_PLAN;
+}
+
 export function getCurrentPlan(): Plan {
-  // Bêta : plan de test pour tous. Plus tard : plan lu depuis le compte (AuthProvider).
-  if (APP_CONFIG.testMode || !APP_CONFIG.subscriptionsEnabled) return PLANS[APP_CONFIG.testPlan];
-  return PLANS.FREE;
+  return planFor(APP_CONFIG.betaMode, getState().subscription);
 }
 
 export function hasFeature(feature: Feature, plan: Plan = getCurrentPlan()): boolean {
   return plan.features.includes(feature);
 }
 
-/** Vérifie l'accès à une fonctionnalité et explique un éventuel refus (jamais utilisé comme paywall en bêta). */
+/** Plus petite offre payante qui contient la fonctionnalité. */
+export function minimumPlanFor(feature: Feature): Plan | null {
+  return PAID_PLANS.find((p) => p.features.includes(feature)) ?? null;
+}
+
+/** Vérifie l'accès à une fonctionnalité et explique un éventuel refus (jamais un paywall pendant la bêta). */
 export function canUseFeature(feature: Feature, plan: Plan = getCurrentPlan()): { allowed: boolean; reason: string | null } {
-  return hasFeature(feature, plan)
-    ? { allowed: true, reason: null }
-    : { allowed: false, reason: `Fonctionnalité incluse dans une offre supérieure à ${plan.name}.` };
+  if (hasFeature(feature, plan)) return { allowed: true, reason: null };
+  const needed = minimumPlanFor(feature);
+  return { allowed: false, reason: needed ? `Fonctionnalité incluse à partir de l’offre ${needed.name}.` : 'Fonctionnalité non disponible.' };
 }

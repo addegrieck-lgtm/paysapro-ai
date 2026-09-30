@@ -104,7 +104,7 @@ npm run dev
 
 | Variable | Défaut | Rôle |
 |---|---|---|
-| `VITE_TEST_MODE` | `true` | Premium Max pour tous |
+| `VITE_BETA_MODE` | `true` | Bêta : Premium Max pour tous, 0 €. À `false` : Starter 19 €, Pro 39 €, Business 69 € HT/mois selon l’abonnement (tarifs dans `src/features/plans/plans.ts`) |
 | `VITE_DEMO_MODE` | `false` | Ouvre directement l’espace démo (salon, démonstration) |
 | `VITE_AI_DEMO_MODE` | `false` | Assistant en mode démonstration par défaut |
 | `VITE_CONTACT_EMAIL` | vide | Adresse publique à qui les visiteurs envoient leur inscription bêta ou leur message, via un e-mail pré-rempli |

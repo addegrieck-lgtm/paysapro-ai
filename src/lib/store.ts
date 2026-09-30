@@ -1,9 +1,9 @@
 // État applicatif en mémoire, synchronisé avec le StorageProvider.
 // Les écritures sont optimistes : l'interface se met à jour immédiatement, puis la donnée est persistée.
 import { useSyncExternalStore } from 'react';
-import type { ActivityEvent, AppSettings, CatalogItem, Client, PhotoMeta, Project, Quote, QuoteTemplate, User } from '../types';
+import type { ActivityEvent, AppSettings, CatalogItem, Client, PhotoMeta, Project, Quote, QuoteTemplate, SubscriptionInfo, User } from '../types';
 import { isDemoSpace, storage } from '../services/storage';
-import { CLOUD_ENABLED, refreshCloudSession } from '../services/cloud/client';
+import { CLOUD_ENABLED, fetchSubscription, refreshCloudSession } from '../services/cloud/client';
 import { builtInTemplates, defaultCatalog, defaultSettings } from '../data/defaults';
 import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings, needsMigration } from '../features/migrations';
 
@@ -12,6 +12,8 @@ export interface AppState {
   loadError: string | null;
   demo: boolean;
   user: User | null;
+  /** Abonnement de l'entreprise (mode cloud) ; null en mode local ou démo */
+  subscription: SubscriptionInfo | null;
   settings: AppSettings;
   clients: Client[];
   projects: Project[];
@@ -27,6 +29,7 @@ let state: AppState = {
   loadError: null,
   demo: false,
   user: null,
+  subscription: null,
   settings: defaultSettings(),
   clients: [],
   projects: [],
@@ -106,7 +109,7 @@ export async function loadAll(): Promise<void> {
       const session = await refreshCloudSession();
       if (!session?.companyId) {
         const user = session ? await storage.getUser() : null;
-        setState({ ready: true, loadError: null, demo: false, user, settings: defaultSettings(), clients: [], projects: [], quotes: [], catalog: [], templates: [], photos: [], activity: [] });
+        setState({ ready: true, loadError: null, demo: false, user, subscription: null, settings: defaultSettings(), clients: [], projects: [], quotes: [], catalog: [], templates: [], photos: [], activity: [] });
         return;
       }
     }
@@ -142,7 +145,8 @@ export async function loadAll(): Promise<void> {
     if (migrate) {
       await Promise.all([...projects.map((p) => storage.saveProject(p)), ...quotes.map((q) => storage.saveQuote(q))]);
     }
-    setState({ ready: true, loadError: null, demo: isDemoSpace(), user, settings, clients, projects, quotes, catalog, templates, photos, activity });
+    const subscription = cloud ? ((await fetchSubscription()) as SubscriptionInfo | null) : null;
+    setState({ ready: true, loadError: null, demo: isDemoSpace(), user, subscription, settings, clients, projects, quotes, catalog, templates, photos, activity });
   } catch (e) {
     console.error(e);
     const blocked = e instanceof Error && e.name === 'StorageBlockedError';

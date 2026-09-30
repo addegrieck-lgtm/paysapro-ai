@@ -22,6 +22,13 @@ export interface User {
   createdAt: ISODate;
 }
 
+/** Abonnement de l'entreprise (mode cloud ; écrit uniquement côté serveur) */
+export interface SubscriptionInfo {
+  planId: string;
+  status: 'beta' | 'active' | 'trialing' | 'past_due' | 'canceled' | 'inactive';
+  currentPeriodEnd: ISODate | null;
+}
+
 // ───────────────────────── Entreprise ─────────────────────────
 
 /** Services à la personne : informations déclarées et vérifiées par l'entreprise elle-même */

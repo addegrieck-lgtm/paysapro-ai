@@ -1,7 +1,7 @@
 import { Check, Rocket } from 'lucide-react';
 import { ButtonLink } from '../../components/ui/Button';
 import { useStartLink } from '../../layouts/PublicLayout';
-import { PLANS } from '../../features/plans/plans';
+import { FEATURES, PAID_PLANS, PLANS, priceLabel } from '../../features/plans/plans';
 
 const INCLUDED = [
   'Devis illimités',
@@ -27,7 +27,7 @@ export function PricingPage() {
           <span className="inline-flex items-center gap-2 rounded-full bg-brand px-3 py-1 text-sm font-bold text-on-brand">
             <Rocket className="h-4 w-4" aria-hidden /> BÊTA
           </span>
-          <span className="text-sm font-semibold text-brand">Accès {PLANS.PREMIUM_MAX.name}</span>
+          <span className="text-sm font-semibold text-brand">{PLANS.BETA.name} offert</span>
         </div>
         <p className="mt-5 text-5xl font-bold tracking-tight">
           0 €<span className="text-xl font-medium text-muted">/mois</span>
@@ -42,19 +42,30 @@ export function PricingPage() {
         <ButtonLink to={start.to} block size="lg" className="mt-7">
           {start.label}
         </ButtonLink>
-        <p className="mt-4 text-center text-sm text-muted">Le prix définitif sera annoncé avant la fin de la période bêta.</p>
+        <p className="mt-4 text-center text-sm text-muted">Aucune carte bancaire demandée. Rien ne sera facturé sans votre accord.</p>
       </div>
 
       <h2 className="mt-14 text-center text-xl font-semibold">Offres prévues après la bêta</h2>
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
-        {[PLANS.FREE, PLANS.PRO, PLANS.PREMIUM].map((p) => (
-          <div key={p.id} className="rounded-2xl border border-line bg-surface p-5 text-center">
+        {PAID_PLANS.map((p) => (
+          <div key={p.id} className="rounded-2xl border border-line bg-surface p-5">
             <div className="font-semibold">{p.name}</div>
-            <div className="mt-1 text-muted">{p.priceLabel}</div>
+            <div className="mt-1 text-2xl font-bold tabular-nums">{priceLabel(p)}</div>
+            <ul className="mt-3 space-y-1.5 text-sm">
+              {p.features.map((f) => (
+                <li key={f} className={`flex items-start gap-2 ${FEATURES[f].status === 'planned' ? 'text-muted' : ''}`}>
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden />
+                  <span>
+                    {FEATURES[f].label}
+                    {FEATURES[f].status === 'planned' && ' — à venir'}
+                  </span>
+                </li>
+              ))}
+            </ul>
           </div>
         ))}
       </div>
-      <p className="mt-4 text-center text-sm text-muted">Aucun prix n’est encore fixé. Les utilisateurs de la bêta seront informés à l’avance.</p>
+      <p className="mt-4 text-center text-sm text-muted">Tarifs prévus à la fin de la bêta. Les utilisateurs de la bêta seront informés à l’avance.</p>
     </div>
   );
 }
