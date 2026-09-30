@@ -27,7 +27,7 @@ Limite : 100 envois par entreprise et par jour.
 
 ## 3. Activer dans l'application
 
-Vercel → Settings → Environment Variables : `VITE_EMAIL_ENABLED=true`, puis redéployez.
+Rien à faire : les boutons d’envoi sont actifs par défaut en mode cloud (`VITE_EMAIL_ENABLED=false` pour les masquer).
 
 ## 4. Essai
 

@@ -1,12 +1,12 @@
 // Envoi d'e-mails (devis au client, invitation d'un collègue) via la fonction serveur « send-email ».
 //
 // Le navigateur n'envoie qu'un identifiant : le destinataire et le texte sont déterminés côté
-// serveur à partir de la base. Actif seulement si VITE_EMAIL_ENABLED vaut « true ».
+// serveur à partir de la base. Actif en mode cloud, sauf si VITE_EMAIL_ENABLED vaut « false ».
 import { CLOUD_ENABLED, supabase } from '../../services/cloud/client';
 import { isDemoSpace } from '../../services/storage';
 
 export function emailEnabled(): boolean {
-  return CLOUD_ENABLED && !isDemoSpace() && import.meta.env?.VITE_EMAIL_ENABLED === 'true';
+  return CLOUD_ENABLED && !isDemoSpace() && import.meta.env?.VITE_EMAIL_ENABLED !== 'false';
 }
 
 const MESSAGES: Record<string, string> = {
