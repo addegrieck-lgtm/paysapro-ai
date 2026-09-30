@@ -1,6 +1,6 @@
 // Crée une session de paiement Stripe (abonnement) pour l'entreprise de l'administrateur connecté.
 // Appelée par l'application : supabase.functions.invoke('stripe-checkout', { body: { plan } }).
-import { APP_URL, cors, customerFor, json, PRICE_IDS, requireAdmin, stripe } from '../_shared/stripe.ts';
+import { APP_URL, cors, customerFor, json, PRICE_IDS, requireAdmin, stripe, YEARLY_PRICE_IDS } from '../_shared/stripe.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors() });
@@ -8,8 +8,9 @@ Deno.serve(async (req) => {
   try {
     const admin = await requireAdmin(req);
     if (!admin) return json({ error: 'forbidden' }, 403);
-    const { plan } = (await req.json().catch(() => ({}))) as { plan?: string };
-    const price = plan ? PRICE_IDS[plan] : undefined;
+    const { plan, interval } = (await req.json().catch(() => ({}))) as { plan?: string; interval?: string };
+    // Le navigateur choisit l'offre et la périodicité ; le prix, lui, vient toujours des tarifs Stripe configurés ici.
+    const price = plan ? (interval === 'year' ? YEARLY_PRICE_IDS : PRICE_IDS)[plan] : undefined;
     if (!price) return json({ error: 'unknown_plan' }, 400);
 
     const customer = await customerFor(admin.companyId, admin.email);

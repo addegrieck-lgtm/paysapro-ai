@@ -19,10 +19,19 @@ Application ◀── lit `subscriptions` ◀── fonction stripe-webhook ◀�
 ## 1. Stripe (mode test)
 
 1. Créez un compte sur stripe.com et restez en **mode test**.
-2. *Catalogue de produits* → créez trois produits avec un tarif mensuel récurrent en euros :
-   `Paysapro AI Starter` 19 €, `Paysapro AI Pro` 39 €, `Paysapro AI Business` 69 €.
+2. *Catalogue de produits* → créez trois produits. Sur chacun, ajoutez **deux tarifs récurrents** en euros,
+   un mensuel et un annuel (25 % de réduction) :
+
+   | Produit | Mensuel | Annuel |
+   |---|---|---|
+   | `Paysapro AI Starter` | 19 € | 171 € |
+   | `Paysapro AI Pro` | 39 € | 351 € |
+   | `Paysapro AI Business` | 69 € | 621 € |
+
+   Ces montants viennent de `src/features/plans/plans.ts` (`YEARLY_DISCOUNT_PERCENT`) : si vous changez la
+   réduction ou un prix, modifiez le fichier **et** les tarifs Stripe, sinon l'affichage et le montant débité divergeront.
    Indiquez si le prix s'entend hors taxes selon votre régime de TVA (à valider avec votre comptable).
-3. Notez les trois identifiants de tarif (`price_…`).
+3. Notez les six identifiants de tarif (`price_…`).
 4. *Paramètres → Portail client* : activez le portail (changement d'offre, résiliation, factures).
 
 ## 2. Fonctions Supabase
@@ -42,7 +51,10 @@ Dans Supabase → **Edge Functions** :
    | `STRIPE_WEBHOOK_SECRET` | secret du webhook (`whsec_…`, étape 3) |
    | `STRIPE_STARTER_PRICE_ID` | `price_…` |
    | `STRIPE_PRO_PRICE_ID` | `price_…` |
-   | `STRIPE_BUSINESS_PRICE_ID` | `price_…` |
+   | `STRIPE_BUSINESS_PRICE_ID` | `price_…` (mensuel) |
+   | `STRIPE_STARTER_YEARLY_PRICE_ID` | `price_…` (annuel) |
+   | `STRIPE_PRO_YEARLY_PRICE_ID` | `price_…` (annuel) |
+   | `STRIPE_BUSINESS_YEARLY_PRICE_ID` | `price_…` (annuel) |
    | `APP_URL` | `https://app.paysapro-ai.fr` |
 
    Ces valeurs ne doivent jamais être copiées dans le code, dans `.env.local`, dans Vercel ni dans une conversation.
@@ -72,4 +84,4 @@ Dans Vercel → Environment Variables : `VITE_BETA_MODE=false` et `VITE_STRIPE_E
 
 - Hors bêta, l'application bloque par offre les écrans Modèles, Planning, Statistiques et Équipe, et la base limite
   le nombre d'utilisateurs. Les autres fonctionnalités ne sont pas encore bloquées par offre.
-- Pas de période d'essai ni de facturation annuelle.
+- Pas de période d'essai.

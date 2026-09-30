@@ -1,7 +1,7 @@
 import { Check, Rocket } from 'lucide-react';
 import { ButtonLink } from '../../components/ui/Button';
 import { useStartLink } from '../../layouts/PublicLayout';
-import { FEATURES, PAID_PLANS, PLANS, priceLabel } from '../../features/plans/plans';
+import { FEATURES, PAID_PLANS, PLANS, priceLabel, YEARLY_DISCOUNT_PERCENT, yearlyEquivalentLabel, yearlyPriceLabel } from '../../features/plans/plans';
 
 const INCLUDED = [
   'Devis illimités',
@@ -46,11 +46,20 @@ export function PricingPage() {
       </div>
 
       <h2 className="mt-14 text-center text-xl font-semibold">Offres prévues après la bêta</h2>
+      <p className="mt-2 text-center text-muted">
+        Paiement au mois, ou à l’année avec <strong className="text-brand">{YEARLY_DISCOUNT_PERCENT} % de réduction</strong>.
+      </p>
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
         {PAID_PLANS.map((p) => (
           <div key={p.id} className="rounded-2xl border border-line bg-surface p-5">
             <div className="font-semibold">{p.name}</div>
             <div className="mt-1 text-2xl font-bold tabular-nums">{priceLabel(p)}</div>
+            <div className="mt-1 text-sm">
+              <span className="font-semibold text-brand">
+                ou {yearlyPriceLabel(p)} (−{YEARLY_DISCOUNT_PERCENT} %)
+              </span>
+              <span className="block text-muted">{yearlyEquivalentLabel(p)}</span>
+            </div>
             <ul className="mt-3 space-y-1.5 text-sm">
               {p.features.map((f) => (
                 <li key={f} className={`flex items-start gap-2 ${FEATURES[f].status === 'planned' ? 'text-muted' : ''}`}>

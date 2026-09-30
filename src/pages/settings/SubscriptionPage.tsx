@@ -3,7 +3,8 @@ import { useAppState } from '../../lib/store';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Badge, Card, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
-import { FEATURES, PAID_PLANS, planFor, priceLabel, type Plan } from '../../features/plans/plans';
+import { FEATURES, PAID_PLANS, planFor, priceLabel, YEARLY_DISCOUNT_PERCENT, yearlyEquivalentLabel, yearlyPriceLabel, type BillingInterval, type Plan } from '../../features/plans/plans';
+import { Segmented } from '../../components/ui/Form';
 import { APP_CONFIG } from '../../config/app';
 import { formatDate } from '../../utils/date';
 import { useState } from 'react';
@@ -47,6 +48,7 @@ export function SubscriptionPage() {
   const status = beta ? 'beta' : (subscription?.status ?? 'inactive');
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [interval, setBillingInterval] = useState<BillingInterval>('year');
   const billing = billingEnabled();
   const pay = async (task: () => Promise<void>) => {
     setBusy(true);
@@ -95,16 +97,28 @@ export function SubscriptionPage() {
 
       <Card>
         <CardTitle>{beta ? 'Offres prévues après la bêta' : 'Changer de plan'}</CardTitle>
+        <div className="mb-4">
+          <Segmented
+            label="Périodicité du paiement"
+            value={interval}
+            onChange={setBillingInterval}
+            options={[
+              { value: 'month', label: 'Au mois' },
+              { value: 'year', label: `À l’année (−${YEARLY_DISCOUNT_PERCENT} %)` },
+            ]}
+          />
+        </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {PAID_PLANS.map((p) => (
             <div key={p.id} className={`rounded-xl border p-4 ${!beta && p.id === plan.id && plan.features.length > 0 ? 'border-brand' : 'border-line'}`}>
               <div className="font-semibold">{p.name}</div>
-              <div className="text-lg font-bold tabular-nums">{priceLabel(p)}</div>
+              <div className="text-lg font-bold tabular-nums">{interval === 'year' ? yearlyPriceLabel(p) : priceLabel(p)}</div>
+              {interval === 'year' && <div className="text-sm font-medium text-brand">{yearlyEquivalentLabel(p)}</div>}
               <div className="mt-1 text-sm text-muted">
                 {p.features.length} fonctionnalités · {p.limits.users} utilisateur{p.limits.users > 1 ? 's' : ''}
               </div>
               {billing && !(p.id === plan.id && plan.features.length > 0) && (
-                <Button size="sm" className="mt-3" disabled={busy} onClick={() => pay(() => startCheckout(p.id.toLowerCase() as 'starter' | 'pro' | 'business'))}>
+                <Button size="sm" className="mt-3" disabled={busy} onClick={() => pay(() => startCheckout(p.id.toLowerCase() as 'starter' | 'pro' | 'business', interval))}>
                   Choisir {p.name}
                 </Button>
               )}

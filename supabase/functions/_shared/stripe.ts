@@ -2,7 +2,8 @@
 //
 // Secrets lus dans l'environnement de la fonction (Supabase → Edge Functions → Secrets) :
 //   STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
-//   STRIPE_STARTER_PRICE_ID, STRIPE_PRO_PRICE_ID, STRIPE_BUSINESS_PRICE_ID,
+//   STRIPE_STARTER_PRICE_ID, STRIPE_PRO_PRICE_ID, STRIPE_BUSINESS_PRICE_ID (tarifs mensuels),
+//   STRIPE_STARTER_YEARLY_PRICE_ID, STRIPE_PRO_YEARLY_PRICE_ID, STRIPE_BUSINESS_YEARLY_PRICE_ID (tarifs annuels, −25 %),
 //   APP_URL (ex. https://app.paysapro-ai.fr)
 // SUPABASE_URL, SUPABASE_ANON_KEY et SUPABASE_SERVICE_ROLE_KEY sont fournis par Supabase.
 // Aucun de ces secrets ne doit apparaître dans le code du navigateur.
@@ -16,8 +17,15 @@ export const PRICE_IDS: Record<string, string | undefined> = {
   business: Deno.env.get('STRIPE_BUSINESS_PRICE_ID'),
 };
 
+export const YEARLY_PRICE_IDS: Record<string, string | undefined> = {
+  starter: Deno.env.get('STRIPE_STARTER_YEARLY_PRICE_ID'),
+  pro: Deno.env.get('STRIPE_PRO_YEARLY_PRICE_ID'),
+  business: Deno.env.get('STRIPE_BUSINESS_YEARLY_PRICE_ID'),
+};
+
+/** Offre correspondant à un tarif Stripe, qu'il soit mensuel ou annuel. */
 export function planForPrice(priceId: string | undefined): string | null {
-  const found = Object.entries(PRICE_IDS).find(([, id]) => id && id === priceId);
+  const found = [...Object.entries(PRICE_IDS), ...Object.entries(YEARLY_PRICE_IDS)].find(([, id]) => id && id === priceId);
   return found ? found[0] : null;
 }
 

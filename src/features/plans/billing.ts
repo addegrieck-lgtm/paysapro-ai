@@ -3,6 +3,7 @@
 // Le navigateur ne connaît aucune clé Stripe : il demande au serveur une adresse de paiement,
 // puis y redirige l'utilisateur. L'abonnement n'est écrit en base que par le webhook Stripe.
 import { APP_CONFIG } from '../../config/app';
+import type { BillingInterval } from './plans';
 import { CLOUD_ENABLED, supabase } from '../../services/cloud/client';
 
 /** Activé seulement hors bêta, en mode cloud, quand VITE_STRIPE_ENABLED vaut « true ». */
@@ -21,8 +22,8 @@ async function redirect(fn: 'stripe-checkout' | 'stripe-portal', body: Record<st
   window.location.assign(url);
 }
 
-export function startCheckout(plan: 'starter' | 'pro' | 'business'): Promise<void> {
-  return redirect('stripe-checkout', { plan });
+export function startCheckout(plan: 'starter' | 'pro' | 'business', interval: BillingInterval = 'month'): Promise<void> {
+  return redirect('stripe-checkout', { plan, interval });
 }
 
 export function openBillingPortal(): Promise<void> {

@@ -6,7 +6,7 @@ import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings, need
 import { computeTotals } from '../src/features/quotes/pricing';
 import { toPublicQuote } from '../src/features/quotes/publicView';
 import { linesFromTemplate, templateLinesFrom } from '../src/features/quotes/lines';
-import { canUseFeature, FEATURES, getCurrentPlan, hasFeature, NO_PLAN, planFor, PLANS } from '../src/features/plans/plans';
+import { canUseFeature, FEATURES, getCurrentPlan, hasFeature, NO_PLAN, planFor, PLANS, YEARLY_DISCOUNT_PERCENT, yearlyEquivalentLabel, yearlyMonthlyEquivalentHT, yearlyPriceHT, yearlyPriceLabel } from '../src/features/plans/plans';
 import { APP_CONFIG } from '../src/config/app';
 import { emptyLead, LocalBetaLeadProvider, sanitize, validateContact, validateLead } from '../src/services/forms/forms';
 import { funnelProgress, LocalAnalyticsProvider } from '../src/services/analytics/AnalyticsProvider';
@@ -91,6 +91,13 @@ describe('plans (bêta : Premium Max pour tous)', () => {
   it('tarifs : Starter 19 €, Pro 39 €, Business 69 € HT par mois', () => {
     expect([PLANS.STARTER, PLANS.PRO, PLANS.BUSINESS].map((p) => p.monthlyPriceHT)).toEqual([19, 39, 69]);
     expect([PLANS.STARTER, PLANS.PRO, PLANS.BUSINESS].every((p) => p.paymentRequired)).toBe(true);
+  });
+  it('paiement à l’année : 25 % de réduction sur 12 mois', () => {
+    expect(YEARLY_DISCOUNT_PERCENT).toBe(25);
+    expect([PLANS.STARTER, PLANS.PRO, PLANS.BUSINESS].map(yearlyPriceHT)).toEqual([171, 351, 621]);
+    expect([PLANS.STARTER, PLANS.PRO, PLANS.BUSINESS].map(yearlyMonthlyEquivalentHT)).toEqual([14.25, 29.25, 51.75]);
+    expect(yearlyPriceLabel(PLANS.PRO)).toBe('351 € HT/an');
+    expect(yearlyEquivalentLabel(PLANS.PRO)).toBe('soit 29,25 € HT/mois');
   });
   it('bêta désactivée : le plan vient de l’abonnement, chaque offre inclut la précédente', () => {
     const sub = (planId: string, status: 'active' | 'canceled' | 'past_due' | 'trialing' | 'inactive' | 'beta') => ({ planId, status, currentPeriodEnd: null });

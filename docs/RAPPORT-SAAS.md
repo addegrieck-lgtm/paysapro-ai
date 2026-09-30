@@ -65,6 +65,8 @@ BÊTA — 0 € (Premium Max, sans carte bancaire)
 STARTER — 19 € HT/mois
 PRO — 39 € HT/mois
 BUSINESS — 69 € HT/mois
+
+Paiement à l'année : −25 % (171 €, 351 €, 621 € HT/an)
 ```
 
 Configuration unique : `src/features/plans/plans.ts`. Limite d'utilisateurs appliquée par la base (`company_user_limit`).

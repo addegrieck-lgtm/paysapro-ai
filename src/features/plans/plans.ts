@@ -83,6 +83,31 @@ export const PAID_PLANS: Plan[] = [PLANS.STARTER, PLANS.PRO, PLANS.BUSINESS];
 /** Sans abonnement actif (bêta terminée) : consultation uniquement, aucune fonctionnalité payante. */
 export const NO_PLAN: Plan = { id: 'STARTER', name: 'Aucun abonnement', monthlyPriceHT: 0, paymentRequired: true, features: [], limits: { users: 1, aiRequestsPerMonth: 0 } };
 
+/** Réduction accordée pour un paiement à l'année (en %). Se modifie ici et nulle part ailleurs. */
+export const YEARLY_DISCOUNT_PERCENT = 25;
+
+export type BillingInterval = 'month' | 'year';
+
+/** Prix annuel HT : 12 mois moins la réduction. 39 €/mois → 351 €/an. */
+export function yearlyPriceHT(plan: Plan): number {
+  return Math.round(plan.monthlyPriceHT * 12 * (100 - YEARLY_DISCOUNT_PERCENT)) / 100;
+}
+
+/** Équivalent mensuel du paiement annuel. 39 €/mois → 29,25 €/mois. */
+export function yearlyMonthlyEquivalentHT(plan: Plan): number {
+  return Math.round((yearlyPriceHT(plan) / 12) * 100) / 100;
+}
+
+const euros = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 });
+
+export function yearlyPriceLabel(plan: Plan): string {
+  return `${euros(yearlyPriceHT(plan))} € HT/an`;
+}
+
+export function yearlyEquivalentLabel(plan: Plan): string {
+  return `soit ${euros(yearlyMonthlyEquivalentHT(plan))} € HT/mois`;
+}
+
 export function priceLabel(plan: Plan): string {
   return plan.monthlyPriceHT === 0 ? '0 €' : `${plan.monthlyPriceHT} € HT/mois`;
 }
