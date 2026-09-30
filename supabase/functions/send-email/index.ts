@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
         `Rejoignez ${companyName}`,
         [
           `${companyName} vous invite à rejoindre son espace sur Paysapro AI (devis et suivi de chantiers).`,
-          `Créez votre compte avec cette adresse e-mail (${to}) : vous rejoindrez l'entreprise automatiquement à votre première connexion.`,
+          `Créez votre compte avec cette adresse e-mail (${to}), ou connectez-vous si vous en avez déjà un : vous rejoindrez l'entreprise automatiquement à votre prochaine connexion.`,
         ],
         { label: 'Créer mon compte', url: `${APP_URL}/#/signup` },
         "Si vous n'attendiez pas cette invitation, ignorez simplement ce message.",

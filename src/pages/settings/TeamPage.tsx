@@ -128,8 +128,8 @@ export function TeamPage() {
           </form>
           <p className="mt-2 text-sm text-muted">{ROLES.find((r) => r.value === role)?.hint}.</p>
           <Alert tone="info">
-            {emailEnabled() ? 'Un e-mail d’invitation est envoyé. ' : 'Aucun e-mail n’est envoyé automatiquement pour l’instant. '}Demandez à votre collègue de créer son compte sur l’application avec cette adresse : il rejoindra votre entreprise dès sa première
-            connexion.
+            {emailEnabled() ? 'Un e-mail d’invitation est envoyé. ' : 'Aucun e-mail n’est envoyé automatiquement pour l’instant. '}Votre collègue crée son compte avec cette adresse (ou se reconnecte s’il en a déjà un) : il rejoint votre entreprise à sa prochaine connexion,
+            s’il n’appartient pas déjà à une autre entreprise.
           </Alert>
           {invitations.length > 0 && (
             <ul className="mt-4 divide-y divide-line">
