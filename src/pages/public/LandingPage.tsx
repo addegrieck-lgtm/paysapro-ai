@@ -22,6 +22,7 @@ import { ButtonLink, Button } from '../../components/ui/Button';
 import { useStartLink } from '../../layouts/PublicLayout';
 import { openDemo } from '../../features/settings/dataActions';
 import { FAQ } from '../../data/faq';
+import { IS_CLOUD_APP } from '../../lib/space';
 import { APP_CONFIG } from '../../config/app';
 
 const FLOW = [
@@ -41,7 +42,7 @@ const STEPS = [
 
 const WHY = [
   { icon: Clock, title: 'Gagnez du temps', text: 'Le devis est prêt avant de quitter le chantier, au lieu d’y passer vos soirées.' },
-  { icon: Smartphone, title: 'Travaillez depuis votre téléphone', text: 'Pensé pour une main, sur le terrain, même sans réseau.' },
+  { icon: Smartphone, title: 'Travaillez depuis votre téléphone', text: IS_CLOUD_APP ? 'Pensé pour une main, sur le terrain : téléphone, tablette ou ordinateur.' : 'Pensé pour une main, sur le terrain, même sans réseau.' },
   { icon: FileText, title: 'Des devis professionnels', text: 'Logo, couleurs, photos, conditions : un document qui inspire confiance.' },
   { icon: PenLine, title: 'Faites signer plus simplement', text: 'Le client accepte et signe sur place, vous savez où en est chaque devis.' },
   { icon: PiggyBank, title: 'Gardez le contrôle de vos marges', text: 'Coût, prix de vente et marge visibles par vous seul, ligne par ligne.' },
@@ -163,7 +164,7 @@ export function LandingPage() {
               {demoBusy ? 'Préparation de la démo…' : 'Explorer la démo avec des données fictives'}
             </button>
             <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
-              {['Sans carte bancaire', 'Fonctionne hors-ligne', 'Données sur votre appareil'].map((t) => (
+              {(IS_CLOUD_APP ? ['Sans carte bancaire', 'Vos données sur tous vos appareils', 'Signature du devis en ligne'] : ['Sans carte bancaire', 'Fonctionne hors-ligne', 'Données sur votre appareil']).map((t) => (
                 <li key={t} className="flex items-center gap-1.5">
                   <Check className="h-4 w-4 text-brand" aria-hidden /> {t}
                 </li>

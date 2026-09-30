@@ -9,6 +9,7 @@ import { Alert, ConfirmDialog, useToast } from '../../components/ui/Feedback';
 import { clearAllData, exportData, importData, exitDemo, openDemo, resetDemo } from '../../features/settings/dataActions';
 import { downloadBlob } from '../../lib/share';
 import { storageEstimate } from '../../lib/pwa';
+import { isOnlineSpace } from '../../lib/space';
 import { formatNumber } from '../../utils/number';
 
 function mb(bytes: number) {
@@ -25,16 +26,17 @@ export function DataPage() {
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<{ used: number; quota: number } | null>(null);
 
+  const online = isOnlineSpace();
   useEffect(() => {
     void storageEstimate().then(setUsage);
   }, [photos.length]);
 
   return (
     <div className="space-y-5">
-      <PageHeader back="/settings" title="Données" subtitle={demo ? "Espace de démonstration (données fictives)." : "Vos données sont stockées uniquement sur cet appareil."} />
+      <PageHeader back="/settings" title="Données" subtitle={demo ? 'Espace de démonstration (données fictives).' : online ? 'Vos données sont enregistrées en ligne, dans l’espace de votre entreprise.' : 'Vos données sont stockées uniquement sur cet appareil.'} />
 
       <Card>
-        <CardTitle icon={<Database className="h-5 w-5" />}>Sur cet appareil</CardTitle>
+        <CardTitle icon={<Database className="h-5 w-5" />}>{online ? 'Votre espace' : 'Sur cet appareil'}</CardTitle>
         <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
           {[
             ['Clients', clients.length],
@@ -48,16 +50,22 @@ export function DataPage() {
             </div>
           ))}
         </dl>
-        {usage && usage.quota > 0 && (
+        {!online && usage && usage.quota > 0 && (
           <p className="mt-3 text-sm text-muted">
             Espace utilisé : {mb(usage.used)} sur {mb(usage.quota)} disponibles.
           </p>
         )}
       </Card>
 
-      <Alert tone="warning" title="Pensez à sauvegarder">
-        Sans compte en ligne, vos données ne sont pas synchronisées. Exportez régulièrement une sauvegarde (par ex. chaque semaine) et gardez-la en lieu sûr (e-mail, cloud personnel).
-      </Alert>
+      {online ? (
+        <Alert tone="info" title="Sauvegarde personnelle">
+          Vos données sont enregistrées en ligne. Vous pouvez en plus télécharger une copie à conserver de votre côté.
+        </Alert>
+      ) : (
+        <Alert tone="warning" title="Pensez à sauvegarder">
+          Sans compte en ligne, vos données ne sont pas synchronisées. Exportez régulièrement une sauvegarde (par ex. chaque semaine) et gardez-la en lieu sûr (e-mail, cloud personnel).
+        </Alert>
+      )}
 
       <Card>
         <CardTitle>Sauvegarde</CardTitle>
@@ -153,7 +161,7 @@ export function DataPage() {
             <p>
               Fichier : <strong>{pendingImport?.name}</strong>
             </p>
-            <p>Toutes les données actuelles de cet appareil seront remplacées par celles de la sauvegarde.</p>
+            <p>Toutes les données actuelles {online ? 'de votre entreprise' : 'de cet appareil'} seront remplacées par celles de la sauvegarde.</p>
           </>
         }
         confirmLabel="Importer et remplacer"
@@ -175,7 +183,7 @@ export function DataPage() {
         title="Supprimer toutes les données ?"
         message={
           <>
-            <p>Clients, chantiers, devis, photos, catalogue et réglages seront définitivement effacés de cet appareil.</p>
+            <p>Clients, chantiers, devis, photos, catalogue et réglages seront définitivement effacés{online ? ' pour toute votre entreprise' : ' de cet appareil'}.</p>
             <p className="font-semibold text-danger">Cette action est irréversible. Exportez d’abord une sauvegarde si besoin.</p>
           </>
         }

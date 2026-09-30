@@ -24,6 +24,7 @@ export interface CloudApi {
   uploadPhoto(photo: PhotoRecord): Promise<void>;
   downloadPhoto(id: string): Promise<PhotoRecord | undefined>;
   listPhotoMetas(): Promise<PhotoMeta[]>;
+  downloadPhotoBlob(id: string, quality: 'thumb' | 'medium'): Promise<Blob | undefined>;
   publishQuote(id: string, view: object): Promise<void>;
 }
 
@@ -110,6 +111,7 @@ export class CloudStorageProvider implements StorageProvider {
     }
   };
 
+  getPhotoBlob = (id: string, quality: 'thumb' | 'medium') => this.client.downloadPhotoBlob(id, quality);
   publishQuote = (id: string, view: object) => this.client.publishQuote(id, view);
 
   clearAll = () => this.client.removeAll();

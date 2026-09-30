@@ -1,3 +1,4 @@
+import { IS_BETA, IS_CLOUD_APP } from '../lib/space';
 // Questions fréquentes : affichées sur la landing page et dans l'aide de l'application.
 export const FAQ: { q: string; a: string }[] = [
   {
@@ -10,11 +11,15 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Comment le client signe-t-il ?',
-    a: 'Le client consulte le devis dans un écran dédié, touche « Accepter le devis », signe avec le doigt et confirme. Nom, date et heure sont enregistrés. Il s’agit d’une validation simple du devis, pas d’une signature électronique qualifiée.',
+    a: IS_CLOUD_APP
+      ? 'Envoyez-lui le lien du devis (ou présentez-le sur votre téléphone) : il consulte le devis sans créer de compte, touche « Accepter le devis », signe avec le doigt et confirme. Nom, date et heure sont enregistrés. Il s’agit d’une signature électronique simple, pas d’une signature qualifiée.'
+      : 'Le client consulte le devis dans un écran dédié, touche « Accepter le devis », signe avec le doigt et confirme. Nom, date et heure sont enregistrés. Il s’agit d’une validation simple du devis, pas d’une signature électronique qualifiée.',
   },
   {
     q: 'Mes données sont-elles sauvegardées ?',
-    a: 'Pendant la bêta, vos données sont enregistrées sur votre appareil (elles restent après fermeture de l’application, même sans réseau). Elles ne sont pas encore synchronisées en ligne : pensez à télécharger régulièrement une sauvegarde depuis Paramètres → Données.',
+    a: IS_CLOUD_APP
+      ? 'Oui : avec votre compte, vos données sont enregistrées en ligne dans l’espace de votre entreprise et accessibles depuis vos appareils. Une connexion Internet est nécessaire pour enregistrer. Vous pouvez aussi télécharger une sauvegarde depuis Paramètres → Données.'
+      : 'Vos données sont enregistrées sur votre appareil (elles restent après fermeture de l’application, même sans réseau). Elles ne sont pas synchronisées en ligne : pensez à télécharger régulièrement une sauvegarde depuis Paramètres → Données.',
   },
   {
     q: 'Puis-je utiliser l’application sur téléphone ?',
@@ -26,6 +31,8 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Combien ça coûte ?',
-    a: 'Rien pendant la bêta : toutes les fonctionnalités (Premium Max) sont ouvertes gratuitement, sans carte bancaire. Le prix définitif sera annoncé avant la fin de la bêta.',
+    a: IS_BETA
+      ? 'Rien pendant la bêta : toutes les fonctionnalités (Premium Max) sont ouvertes gratuitement, sans carte bancaire. Les offres prévues ensuite (Starter 19 €, Pro 39 €, Business 69 € HT par mois, −25 % à l’année) figurent sur la page Tarifs ; rien n’est facturé sans votre accord.'
+      : 'Trois offres : Starter 19 €, Pro 39 € et Business 69 € HT par mois, avec 25 % de réduction pour un paiement à l’année. Le détail est sur la page Tarifs.',
   },
 ];

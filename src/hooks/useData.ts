@@ -52,7 +52,9 @@ export function usePhotoUrl(photoId: string | undefined, quality: 'thumb' | 'med
     let cancelled = false;
     const load = publicPhotoSource
       ? publicPhotoSource(photoId, quality)
-      : storage.getPhoto(photoId).then((rec) => rec && (quality === 'thumb' ? rec.thumb : rec.medium));
+      : typeof storage.getPhotoBlob === 'function'
+        ? storage.getPhotoBlob(photoId, quality)
+        : storage.getPhoto(photoId).then((rec) => rec && (quality === 'thumb' ? rec.thumb : rec.medium));
     void load.then((blob) => {
       if (!blob || cancelled) return;
       const u = URL.createObjectURL(blob);

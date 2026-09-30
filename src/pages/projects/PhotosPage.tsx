@@ -15,6 +15,7 @@ import { addPhotos, deletePhoto, updatePhoto } from '../../features/projects/act
 import { updateQuote } from '../../features/quotes/actions';
 import { PHOTO_TAGS, photoTagLabel } from '../../features/projects/status';
 import { clientDisplayName } from '../../features/clients/format';
+import { isOnlineSpace } from '../../lib/space';
 import type { PhotoMeta, PhotoTag } from '../../types';
 
 const MAX_IN_QUOTE = 8;
@@ -103,7 +104,9 @@ export function PhotosPage() {
             e.target.value = '';
           }}
         />
-        <p className="mt-3 text-xs text-muted">Les photos sont compressées et restent sur cet appareil. Elles ne sont envoyées nulle part.</p>
+        <p className="mt-3 text-xs text-muted">{isOnlineSpace()
+            ? 'Les photos sont compressées, puis enregistrées dans l’espace privé de votre entreprise. Elles ne sont jamais envoyées à un service d’IA externe.'
+            : 'Les photos sont compressées et restent sur cet appareil. Elles ne sont envoyées nulle part.'}</p>
       </Card>
 
       {photos.length === 0 ? (

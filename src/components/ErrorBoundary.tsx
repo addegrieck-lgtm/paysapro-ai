@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
         <h1 className="text-2xl font-bold">{chunk || offline ? 'Connexion nécessaire' : 'Un problème est survenu'}</h1>
         <p className="max-w-sm text-muted">
           {chunk || offline
-            ? 'Cet écran n’a pas encore été enregistré sur votre appareil. Reconnectez-vous une fois à Internet : il fonctionnera ensuite hors-ligne.'
+            ? 'Cet écran n’a pas pu être chargé. Vérifiez votre connexion Internet, puis réessayez.'
             : 'L’écran n’a pas pu s’afficher. Vos données enregistrées ne sont pas affectées.'}
         </p>
         <div className="flex flex-wrap justify-center gap-2">

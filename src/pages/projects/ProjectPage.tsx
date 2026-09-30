@@ -139,7 +139,7 @@ export function ProjectPage() {
       <ConfirmDialog
         open={confirmDelete}
         title="Supprimer ce chantier ?"
-        message={<p>Le chantier, son devis et ses photos seront définitivement supprimés de cet appareil.</p>}
+        message={<p>Le chantier, son devis et ses photos seront supprimés.</p>}
         confirmLabel="Supprimer"
         danger
         onClose={() => setConfirmDelete(false)}

@@ -8,6 +8,7 @@ import { getCurrentPlan } from '../../features/plans/plans';
 import { betaLeads } from '../../services/forms/forms';
 import { downloadBlob } from '../../lib/share';
 import { formatDate } from '../../utils/date';
+import { APP_CONFIG } from '../../config/app';
 import type { BetaLead } from '../../types';
 
 function toCsv(leads: BetaLead[]): string {
@@ -32,8 +33,12 @@ export function BetaProgramPage() {
         <div className="flex items-start gap-3">
           <Rocket className="mt-0.5 h-6 w-6 shrink-0 text-brand" aria-hidden />
           <div>
-            <p className="font-semibold text-ink">Vous utilisez actuellement Paysapro AI {plan.name} gratuitement pendant la phase bêta.</p>
-            <p className="mt-1 text-sm text-muted">Toutes les fonctionnalités sont ouvertes, sans carte bancaire. Le prix définitif sera annoncé avant la fin de la bêta.</p>
+            <p className="font-semibold text-ink">
+              {APP_CONFIG.betaMode ? `Vous utilisez actuellement Paysapro AI ${plan.name} gratuitement pendant la phase bêta.` : 'Merci de faire partie des premiers utilisateurs de Paysapro AI.'}
+            </p>
+            <p className="mt-1 text-sm text-muted">{APP_CONFIG.betaMode
+                ? 'Toutes les fonctionnalités sont ouvertes, sans carte bancaire. Les offres prévues ensuite figurent dans Paramètres → Abonnement.'
+                : 'Votre offre et ses fonctionnalités figurent dans Paramètres → Abonnement.'}</p>
           </div>
         </div>
       </Card>

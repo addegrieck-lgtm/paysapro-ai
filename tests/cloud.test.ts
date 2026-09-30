@@ -41,6 +41,9 @@ class MemoryApi implements CloudApi {
   async downloadPhoto(id: string) {
     return this.photos.get(id);
   }
+  async downloadPhotoBlob(id: string, quality: 'thumb' | 'medium') {
+    return this.photos.get(id)?.[quality];
+  }
   published = new Map<string, object>();
   async publishQuote(id: string, view: object) {
     this.published.set(id, view);

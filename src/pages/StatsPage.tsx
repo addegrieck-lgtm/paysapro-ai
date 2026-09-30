@@ -24,7 +24,7 @@ export function StatsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Statistiques" subtitle="Calculées à partir de vos données, sur cet appareil." />
+      <PageHeader title="Statistiques" subtitle="Calculées à partir de vos données." />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard label="Devis émis" value={stats.quoteCount} hint={formatMoney(stats.quotedAmount, true)} />
         <StatCard label="Devis signés / acceptés" value={stats.acceptedCount} hint={formatMoney(stats.signedAmount, true)} />

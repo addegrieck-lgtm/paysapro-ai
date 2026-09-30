@@ -114,7 +114,7 @@ export function VisualizePage() {
                 )}
               </div>
             )}
-            <p className="mt-3 text-xs text-muted">Vos photos restent sur cet appareil : aucune image n’est envoyée à un service externe.</p>
+            <p className="mt-3 text-xs text-muted">Aucune image n’est envoyée à un service d’IA externe.</p>
           </>
         )}
       </Card>

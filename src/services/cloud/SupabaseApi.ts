@@ -249,6 +249,14 @@ export class SupabaseApi implements CloudApi {
     return { ...meta, thumb: thumb.data, medium: medium.data };
   }
 
+  /** Une seule taille, sans relire les métadonnées : utilisé pour l'affichage des vignettes. */
+  async downloadPhotoBlob(id: string, quality: 'thumb' | 'medium'): Promise<Blob | undefined> {
+    const companyId = this.companyId;
+    if (!companyId) return undefined;
+    const { data, error } = await this.db.storage.from('photos').download(this.path(companyId, id, quality));
+    return error || !data ? undefined : data;
+  }
+
   listPhotoMetas(): Promise<PhotoMeta[]> {
     return this.list<PhotoMeta>('photos');
   }

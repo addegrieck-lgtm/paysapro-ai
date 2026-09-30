@@ -78,6 +78,9 @@ export interface StorageProvider {
   getRecords<K extends keyof ProductRecords>(store: K): Promise<ProductRecords[K][]>;
   clearRecords(store: keyof ProductRecords): Promise<void>;
 
+  /** Facultatif : une seule taille d'une photo (évite de télécharger la grande image pour une vignette). */
+  getPhotoBlob?(id: ID, quality: 'thumb' | 'medium'): Promise<Blob | undefined>;
+
   /** Mode cloud uniquement : enregistre la vue publique d'un devis (lien client). */
   publishQuote?(id: ID, view: object): Promise<void>;
 
