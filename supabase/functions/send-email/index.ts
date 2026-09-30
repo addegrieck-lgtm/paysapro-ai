@@ -28,6 +28,11 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', 
 const isEmail = (s: unknown): s is string => typeof s === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s) && s.length <= 254;
 const isUuid = (s: unknown): s is string => typeof s === 'string' && /^[0-9a-f-]{36}$/i.test(s);
 
+/** Version texte du message : les messageries l'attendent à côté du HTML (moins de classement en indésirables). */
+function plainText(title: string, paragraphs: string[], button: { label: string; url: string }, footer: string): string {
+  return [title, '', ...paragraphs.flatMap((p) => [p, '']), `${button.label} : ${button.url}`, '', '--', footer].join('\n');
+}
+
 function layout(title: string, paragraphs: string[], button: { label: string; url: string }, footer: string): string {
   return `<!doctype html><html lang="fr"><body style="margin:0;background:#f5f2ea;font-family:Arial,Helvetica,sans-serif;color:#1d2421">
 <div style="max-width:560px;margin:0 auto;padding:24px">
@@ -72,6 +77,7 @@ Deno.serve(async (req) => {
     let to: string;
     let subject: string;
     let html: string;
+    let text: string;
 
     if (body.type === 'quote' && isUuid(body.quoteId)) {
       if (role === 'read_only') return json({ error: 'forbidden' }, 403);
@@ -84,7 +90,7 @@ Deno.serve(async (req) => {
       to = view.client!.email!;
       const total = typeof view.totals?.totalTTC === 'number' ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(view.totals.totalTTC) : null;
       subject = `Votre devis n° ${q.number} — ${companyName}`;
-      html = layout(
+      const parts: [string, string[], { label: string; url: string }, string] = [
         `Votre devis n° ${q.number}`,
         [
           `Bonjour${view.client?.firstName ? ` ${view.client.firstName}` : ''},`,
@@ -93,14 +99,16 @@ Deno.serve(async (req) => {
         ],
         { label: 'Consulter le devis', url: `${APP_URL}/#/quote/${q.public_token}` },
         `${companyName}${company.data?.phone ? ` — ${company.data.phone}` : ''}. Message envoyé via Paysapro AI.`,
-      );
+      ];
+      html = layout(...parts);
+      text = plainText(...parts);
     } else if (body.type === 'invitation' && isUuid(body.invitationId)) {
       if (role !== 'admin') return json({ error: 'forbidden' }, 403);
       const invitation = await db.from('company_invitations').select('email, accepted_at').eq('id', body.invitationId).eq('company_id', companyId).maybeSingle();
       if (!invitation.data || invitation.data.accepted_at || !isEmail(invitation.data.email)) return json({ error: 'invitation_not_found' }, 400);
       to = invitation.data.email as string;
       subject = `${companyName} vous invite sur Paysapro AI`;
-      html = layout(
+      const parts: [string, string[], { label: string; url: string }, string] = [
         `Rejoignez ${companyName}`,
         [
           `${companyName} vous invite à rejoindre son espace sur Paysapro AI (devis et suivi de chantiers).`,
@@ -108,7 +116,9 @@ Deno.serve(async (req) => {
         ],
         { label: 'Créer mon compte', url: `${APP_URL}/#/signup` },
         "Si vous n'attendiez pas cette invitation, ignorez simplement ce message.",
-      );
+      ];
+      html = layout(...parts);
+      text = plainText(...parts);
     } else {
       return json({ error: 'invalid_request' }, 400);
     }
@@ -122,7 +132,7 @@ Deno.serve(async (req) => {
     const sent = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to: [to], subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
+      body: JSON.stringify({ from, to: [to], subject, html, text, ...(replyTo ? { reply_to: replyTo } : {}) }),
     });
     if (!sent.ok) {
       console.error('resend', sent.status);
