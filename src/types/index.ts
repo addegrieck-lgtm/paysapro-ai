@@ -24,6 +24,19 @@ export interface User {
 
 // ───────────────────────── Entreprise ─────────────────────────
 
+/** Services à la personne : informations déclarées et vérifiées par l'entreprise elle-même */
+export interface SapSettings {
+  enabled: boolean;
+  /** Numéro de déclaration SAP (ex. SAP123456789) */
+  number: string;
+  /** Date d'enregistrement de la déclaration (AAAA-MM-JJ) */
+  declarationDate: string;
+  /** Activité déclarée (ex. « Petits travaux de jardinage ») */
+  activity: string;
+  /** Informations complémentaires imprimées sur les documents SAP */
+  notes: string;
+}
+
 export interface CompanySettings {
   name: string;
   logoDataUrl: string | null;
@@ -43,6 +56,7 @@ export interface CompanySettings {
   brandColor: string;
   /** Pied de page des devis (mentions, assurance, etc.) */
   quoteFooter: string;
+  sap: SapSettings;
 }
 
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -252,6 +266,8 @@ export interface CatalogItem {
   wastePercent: number;
   /** Épaisseur par défaut en cm (règle « volume ») */
   thicknessCm: number | null;
+  /** Prestation relevant des services à la personne : choisi par l'entreprise, jamais déduit */
+  sapEligible?: boolean;
   createdAt: ISODate;
   updatedAt: ISODate;
 }
@@ -278,6 +294,7 @@ export interface QuoteLine {
   unitPrice: number;
   /** Coût unitaire HT (interne) */
   unitCost: number;
+  sapEligible?: boolean;
 }
 
 export type QuoteStatus = 'draft' | 'ready' | 'sent' | 'viewed' | 'accepted' | 'signed' | 'refused';
@@ -292,7 +309,7 @@ export interface SignatureRecord {
   userAgent: string;
 }
 
-export type PaymentMethod = 'transfer' | 'check' | 'cash' | 'card' | 'other';
+export type PaymentMethod = 'transfer' | 'check' | 'cash' | 'card' | 'cesu' | 'other';
 
 export interface PaymentRecord {
   id: ID;

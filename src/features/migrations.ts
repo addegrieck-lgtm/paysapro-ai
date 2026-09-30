@@ -16,7 +16,7 @@ type LegacyLine = Omit<QuoteLine, 'unitCost'> & { unitCost?: number };
 type LegacyQuote = Omit<Quote, 'lines'> & { lines: LegacyLine[]; marginPercent?: number };
 type LegacyItem = Omit<CatalogItem, 'costPrice'> & { costPrice?: number };
 type LegacyProject = Omit<Project, 'privateNotes'> & { privateNotes?: string };
-type LegacySettings = Partial<AppSettings> & { company?: Partial<AppSettings['company']> };
+type LegacySettings = Omit<Partial<AppSettings>, 'company'> & { company?: Partial<Omit<AppSettings['company'], 'sap'>> & { sap?: Partial<AppSettings['company']['sap']> } };
 
 export function migrateSettings(s: LegacySettings | null | undefined): AppSettings {
   const d = defaultSettings();
@@ -24,7 +24,7 @@ export function migrateSettings(s: LegacySettings | null | undefined): AppSettin
   return {
     ...d,
     ...s,
-    company: { ...d.company, ...(s.company ?? {}) },
+    company: { ...d.company, ...(s.company ?? {}), sap: { ...d.company.sap, ...(s.company?.sap ?? {}) } },
     owner: { ...d.owner, ...(s.owner ?? {}) },
     notificationPrefs: { ...d.notificationPrefs, ...(s.notificationPrefs ?? {}) },
     schemaVersion: SCHEMA_VERSION,

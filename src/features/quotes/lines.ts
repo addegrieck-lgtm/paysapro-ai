@@ -21,6 +21,7 @@ export function lineFromCatalog(item: CatalogItem): QuoteLine {
     thicknessCm: item.thicknessCm,
     unitPrice: item.unitPrice,
     unitCost: item.costPrice,
+    ...(item.sapEligible ? { sapEligible: true } : {}),
   };
 }
 

@@ -4,7 +4,7 @@ import { ListLink } from '../../components/ui/Card';
 
 export const SETTINGS_ITEMS = [
   { to: '/settings/account', icon: UserRound, label: 'Compte', hint: 'Profil, plan Premium Max' },
-  { to: '/company', icon: Building2, label: 'Entreprise', hint: 'Logo, coordonnées, couleurs des devis' },
+  { to: '/company', icon: Building2, label: 'Entreprise', hint: 'Logo, coordonnées, couleurs des devis, SAP' },
   { to: '/settings/quotes', icon: FileText, label: 'Devis', hint: 'TVA, acompte, validité, numérotation' },
   { to: '/catalog', icon: BookOpen, label: 'Catalogue', hint: 'Prestations, prix d’achat et de vente' },
   { to: '/settings/notifications', icon: Bell, label: 'Notifications', hint: 'Devis signés, vus, expirés…' },

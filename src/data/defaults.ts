@@ -1,4 +1,4 @@
-import type { AppSettings, CatalogItem, LineKind, QuantityRule, QuoteTemplate, Unit } from '../types';
+import type { AppSettings, CatalogItem, LineKind, QuantityRule, QuoteTemplate, SapSettings, Unit } from '../types';
 import { uid } from '../utils/id';
 
 export const SCHEMA_VERSION = 2;
@@ -11,6 +11,10 @@ export const DEFAULT_TERMS = [
 ].join('\n');
 
 export const DEFAULT_BRAND_COLOR = '#1f5c44';
+
+export function defaultSap(): SapSettings {
+  return { enabled: false, number: '', declarationDate: '', activity: '', notes: '' };
+}
 
 export function defaultSettings(): AppSettings {
   return {
@@ -30,6 +34,7 @@ export function defaultSettings(): AppSettings {
       terms: DEFAULT_TERMS,
       brandColor: DEFAULT_BRAND_COLOR,
       quoteFooter: '',
+      sap: defaultSap(),
     },
     owner: { firstName: '', lastName: '' },
     activities: [],

@@ -92,7 +92,10 @@ export function CatalogPage() {
                   return (
                     <li key={item.id} className="grid grid-cols-[1fr_auto] items-center gap-2 py-2 pl-4 pr-2 md:grid-cols-[1fr_6rem_6rem_6rem_7.5rem]">
                       <button type="button" className="min-w-0 py-1 text-left" onClick={() => setEditing(item)}>
-                        <div className="truncate font-medium">{item.label}</div>
+                        <div className="truncate font-medium">
+                          {item.label}
+                          {settings.company.sap.enabled && item.sapEligible && <span className="ml-2 rounded border border-line px-1.5 py-0.5 align-middle text-[0.65rem] font-semibold uppercase tracking-wider text-muted">SAP</span>}
+                        </div>
                         <div className="text-sm tabular-nums text-muted md:hidden">
                           Achat {formatMoney(item.costPrice)} · Vente {formatMoney(item.unitPrice)} / {u} ·{' '}
                           <span className={m.amount < 0 ? 'text-danger' : 'text-success'}>marge {formatMoney(m.amount)}</span>
@@ -141,6 +144,7 @@ export function CatalogPage() {
           item={editing}
           sections={[...new Set(catalog.map((c) => c.section))]}
           defaultMargin={settings.defaultMarginPercent}
+          sapEnabled={settings.company.sap.enabled}
           onClose={() => setEditing(null)}
           onSave={(item) => {
             saveCatalogItem(item);
@@ -170,12 +174,14 @@ function EditDialog({
   item,
   sections,
   defaultMargin,
+  sapEnabled,
   onClose,
   onSave,
 }: {
   item: CatalogItem;
   sections: string[];
   defaultMargin: number;
+  sapEnabled: boolean;
   onClose: () => void;
   onSave: (i: CatalogItem) => void;
 }) {
@@ -197,7 +203,7 @@ function EditDialog({
         </>
       }
     >
-      <CatalogItemFields value={value} onChange={setValue} sections={sections} defaultMargin={defaultMargin} />
+      <CatalogItemFields value={value} onChange={setValue} sections={sections} defaultMargin={defaultMargin} sapEnabled={sapEnabled} />
     </Dialog>
   );
 }

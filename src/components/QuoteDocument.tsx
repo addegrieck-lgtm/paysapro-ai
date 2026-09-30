@@ -1,6 +1,6 @@
 import type { PublicQuoteView } from '../features/quotes/publicView';
 import { unitShort } from '../features/catalog/units';
-import { formatDate, formatLongDate, formatTime } from '../utils/date';
+import { formatDate, formatLongDate, formatTime, fromInputDate } from '../utils/date';
 import { formatMoney, formatNumber, formatPercent } from '../utils/number';
 import { PhotoThumb } from './PhotoThumb';
 import { DEFAULT_BRAND_COLOR } from '../data/defaults';
@@ -100,7 +100,10 @@ export function QuoteDocument({ view }: { view: PublicQuoteView }) {
             {view.lines.map((l, i) => (
               <li key={i} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 py-3 sm:grid-cols-[1fr_5rem_6.5rem_7rem] sm:items-baseline">
                 <div className="min-w-0">
-                  <div className="font-medium text-ink">{l.label}</div>
+                  <div className="font-medium text-ink">
+                    {l.label}
+                    {l.sap && <span className="ml-2 rounded border border-line px-1.5 py-0.5 align-middle text-[0.65rem] font-semibold uppercase tracking-wider text-muted">SAP</span>}
+                  </div>
                   {l.description && <div className="text-sm text-muted">{l.description}</div>}
                   {l.estimated && <div className="text-xs font-medium text-warning">Quantité estimée — à confirmer</div>}
                 </div>
@@ -140,6 +143,23 @@ export function QuoteDocument({ view }: { view: PublicQuoteView }) {
             </>
           )}
         </section>
+
+        {view.sap && (
+          <section className="rounded-xl bg-surface-2 p-4 text-sm">
+            <h3 className="mb-1 font-semibold uppercase tracking-wider" style={{ color: brand }}>
+              Informations SAP — services à la personne
+            </h3>
+            <p className="text-ink">
+              Déclaration SAP n° {view.sap.number}
+              {fromInputDate(view.sap.declarationDate) && <> enregistrée le {formatDate(fromInputDate(view.sap.declarationDate))}</>}
+              {view.sap.activity && <> — {view.sap.activity}</>}
+            </p>
+            <p className="text-muted">
+              Prestations concernées (marquées SAP) : {formatMoney(view.sap.totalHT)} HT, soit {formatMoney(view.sap.totalTTC)} TTC.
+            </p>
+            {view.sap.notes && <p className="mt-1 whitespace-pre-line text-muted">{view.sap.notes}</p>}
+          </section>
+        )}
 
         {totals.hasEstimates && (
           <p className="rounded-xl bg-warning-soft p-3 text-sm text-warning">

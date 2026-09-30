@@ -20,7 +20,7 @@ import { useProjectData } from '../../hooks/useData';
 import { PageHeader, StickyActions } from '../../components/ui/PageHeader';
 import { Card, CardTitle } from '../../components/ui/Card';
 import { Button, IconButton } from '../../components/ui/Button';
-import { Chip, NumberField, Segmented, SelectField, TextArea, TextField } from '../../components/ui/Form';
+import { Checkbox, Chip, NumberField, Segmented, SelectField, TextArea, TextField } from '../../components/ui/Form';
 import { Alert, Dialog, EmptyState, useToast } from '../../components/ui/Feedback';
 import { CatalogPicker } from '../../components/CatalogPicker';
 import { AssistantPanel } from '../../components/AssistantPanel';
@@ -166,6 +166,7 @@ export function ServicesPage() {
               computed={cl}
               project={project}
               locked={locked}
+              sapEnabled={settings.company.sap.enabled}
               open={openLine === cl.line.id}
               first={i === 0}
               last={i === totals.lines.length - 1}
@@ -328,6 +329,7 @@ function LineCard({
   computed,
   project,
   locked,
+  sapEnabled,
   open,
   first,
   last,
@@ -339,6 +341,7 @@ function LineCard({
   computed: ComputedLine;
   project: Project;
   locked: boolean;
+  sapEnabled: boolean;
   open: boolean;
   first: boolean;
   last: boolean;
@@ -354,7 +357,10 @@ function LineCard({
     <Card className="p-0! overflow-hidden">
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-start gap-3 p-4 text-left">
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-ink">{line.label || 'Nouvelle ligne'}</div>
+          <div className="font-semibold text-ink">
+            {line.label || 'Nouvelle ligne'}
+            {sapEnabled && line.sapEligible && <span className="ml-2 rounded border border-line px-1.5 py-0.5 align-middle text-[0.65rem] font-semibold uppercase tracking-wider text-muted">SAP</span>}
+          </div>
           {computed.status === 'missing' ? (
             <div className="mt-0.5 flex items-center gap-1.5 text-sm font-medium text-warning">
               <TriangleAlert className="h-4 w-4 shrink-0" aria-hidden /> {computed.message}
@@ -403,6 +409,11 @@ function LineCard({
             <NumberField label={`Prix de vente HT / ${u}`} suffix="€" value={line.unitPrice} onChange={(v) => onChange({ unitPrice: v ?? 0 })} />
             <NumberField label={`Coût HT / ${u} (interne)`} suffix="€" value={line.unitCost} onChange={(v) => onChange({ unitCost: v ?? 0 })} hint="Jamais visible par le client." />
           </div>
+          {sapEnabled && (
+            <Checkbox checked={line.sapEligible === true} onChange={(v) => onChange({ sapEligible: v })}>
+              SAP éligible (services à la personne)
+            </Checkbox>
+          )}
           <div className="flex items-center justify-between gap-2 pt-1">
             <div className="flex">
               <IconButton label="Monter" disabled={first} onClick={() => onMove(-1)}>

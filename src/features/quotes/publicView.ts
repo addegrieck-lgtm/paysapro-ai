@@ -9,6 +9,8 @@ import { computeTotals } from './pricing';
 import { clientAddress, clientDisplayName } from '../clients/format';
 import { categoriesText, hasDepositPaid } from '../projects/status';
 import { addDays } from '../../utils/date';
+import { round } from '../../utils/number';
+import { sapActive } from '../sap/sap';
 
 export interface PublicQuoteLine {
   label: string;
@@ -18,6 +20,17 @@ export interface PublicQuoteLine {
   unitPrice: number;
   total: number;
   estimated: boolean;
+  /** Prestation de services à la personne (uniquement si les mentions SAP s'affichent) */
+  sap: boolean;
+}
+
+export interface PublicQuoteSap {
+  number: string;
+  declarationDate: string;
+  activity: string;
+  notes: string;
+  totalHT: number;
+  totalTTC: number;
 }
 
 export interface PublicQuoteView {
@@ -26,7 +39,9 @@ export interface PublicQuoteView {
   status: QuoteStatus;
   issueDate: string | null;
   validUntil: string | null;
-  company: Omit<CompanySettings, 'terms'>;
+  company: Omit<CompanySettings, 'terms' | 'sap'>;
+  /** null si le mode SAP est désactivé, le numéro absent ou aucune prestation SAP dans le devis */
+  sap: PublicQuoteSap | null;
   client: { displayName: string; firstName: string; lastName: string; address: string; phone: string; email: string };
   project: { title: string; siteAddress: string };
   description: string;
@@ -57,7 +72,19 @@ export function toPublicQuote(args: {
 }): PublicQuoteView {
   const { quote, project, client, company, photos } = args;
   const totals = computeTotals(quote, project);
-  const { terms: _companyTerms, ...companyPublic } = company;
+  const { terms: _companyTerms, sap: sapSettings, ...companyPublic } = company;
+  const sapHT = round(totals.lines.filter((l) => l.line.sapEligible === true).reduce((s, l) => s + l.saleTotal, 0));
+  const showSap = sapActive(company) && totals.lines.some((l) => l.line.sapEligible === true);
+  const sap: PublicQuoteSap | null = showSap
+    ? {
+        number: sapSettings.number.trim(),
+        declarationDate: sapSettings.declarationDate,
+        activity: sapSettings.activity.trim(),
+        notes: sapSettings.notes.trim(),
+        totalHT: sapHT,
+        totalTTC: round(sapHT * (1 + totals.vatRate / 100)),
+      }
+    : null;
   return {
     token: quote.publicToken,
     number: quote.number,
@@ -65,6 +92,7 @@ export function toPublicQuote(args: {
     issueDate: quote.issueDate,
     validUntil: quote.issueDate ? addDays(quote.issueDate, quote.validityDays).toISOString() : null,
     company: companyPublic,
+    sap,
     client: {
       displayName: clientDisplayName(client),
       firstName: client?.firstName ?? '',
@@ -83,6 +111,7 @@ export function toPublicQuote(args: {
       unitPrice: l.saleUnitPrice,
       total: l.saleTotal,
       estimated: l.status === 'estimated',
+      sap: showSap && l.line.sapEligible === true,
     })),
     totals: {
       totalHT: totals.totalHT,

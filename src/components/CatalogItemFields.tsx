@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import type { CatalogItem, LineKind, QuantityRule, Unit } from '../types';
-import { NumberField, SelectField, TextField } from './ui/Form';
+import { Checkbox, NumberField, SelectField, TextField } from './ui/Form';
 import { Button } from './ui/Button';
 import { LINE_KINDS, QUANTITY_RULES, UNITS, defaultUnitForRule, unitShort } from '../features/catalog/units';
 import { applyMargin } from '../features/quotes/pricing';
@@ -37,11 +37,14 @@ export function CatalogItemFields({
   onChange,
   sections,
   defaultMargin,
+  sapEnabled = false,
 }: {
   value: CatalogItem;
   onChange: (v: CatalogItem) => void;
   sections: string[];
   defaultMargin: number;
+  /** Mode SAP activé par l'entreprise : affiche le choix « SAP éligible » */
+  sapEnabled?: boolean;
 }) {
   const listId = useId();
   const set = <K extends keyof CatalogItem>(k: K, v: CatalogItem[K]) => onChange({ ...value, [k]: v });
@@ -90,6 +93,14 @@ export function CatalogItemFields({
         <SelectField label="Catégorie" value={value.kind} onChange={(v) => set('kind', v as LineKind)} options={LINE_KINDS} className="col-span-2" />
       )}
       <TextField label="Détail affiché sur le devis (facultatif)" value={value.description} onChange={(v) => set('description', v)} className="col-span-2" />
+      {sapEnabled && (
+        <div className="col-span-2">
+          <Checkbox checked={value.sapEligible === true} onChange={(v) => set('sapEligible', v)}>
+            SAP éligible
+            <span className="block text-sm text-muted">À cocher uniquement si cette prestation relève de votre déclaration de services à la personne.</span>
+          </Checkbox>
+        </div>
+      )}
     </div>
   );
 }

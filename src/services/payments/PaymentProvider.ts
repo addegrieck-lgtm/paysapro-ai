@@ -32,6 +32,7 @@ export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'check', label: 'Chèque' },
   { value: 'cash', label: 'Espèces' },
   { value: 'card', label: 'Carte (TPE)' },
+  { value: 'cesu', label: 'CESU préfinancé' },
   { value: 'other', label: 'Autre' },
 ];
 

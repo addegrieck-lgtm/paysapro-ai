@@ -34,6 +34,7 @@ import { clientDisplayName } from '../../features/clients/format';
 import { canShareFiles, downloadBlob, shareNative } from '../../lib/share';
 import { formatMoney } from '../../utils/number';
 import { formatLongDate, formatTime } from '../../utils/date';
+import { hasSapLines, sapMissingFields } from '../../features/sap/sap';
 
 export function QuotePage() {
   const { id } = useParams();
@@ -87,7 +88,12 @@ export function QuotePage() {
     }
   };
 
+  // Mode SAP : avertir avant génération si les informations nécessaires sont incomplètes
+  const sapConcerned = settings.company.sap.enabled && hasSapLines(quote);
+  const sapMissing = sapConcerned ? sapMissingFields(settings.company) : [];
+
   const download = async () => {
+    if (sapMissing.length > 0) toast(view.sap ? 'Informations SAP incomplètes : vérifiez-les avant d’envoyer.' : 'Numéro SAP absent : PDF généré sans mention SAP.', 'info');
     const file = await pdf();
     if (file) {
       downloadBlob(file, file.name);
@@ -195,6 +201,29 @@ export function QuotePage() {
           </div>
           {quote.status === 'accepted' && (
             <p className="mt-3 text-sm text-muted">Pour faire signer le devis, utilisez « Présenter au client ».</p>
+          )}
+        </Card>
+      )}
+
+      {sapConcerned && (
+        <Card className="no-print">
+          <CardTitle>Informations SAP</CardTitle>
+          {view.sap ? (
+            <p className="text-sm text-muted">
+              Ce devis contient {quote.lines.filter((l) => l.sapEligible).length} prestation(s) SAP pour {formatMoney(view.sap.totalTTC)} TTC. La déclaration n° {view.sap.number} est imprimée sur le devis et son PDF.
+            </p>
+          ) : (
+            <p className="text-sm text-muted">Ce devis contient des prestations SAP, mais aucune mention SAP n’est imprimée tant que le numéro SAP n’est pas renseigné.</p>
+          )}
+          {sapMissing.length > 0 && (
+            <div className="mt-3">
+              <Alert tone="warning" title="Information manquante avant génération">
+                {sapMissing.join(' · ')}.{' '}
+                <a className="font-semibold underline" href="#/company">
+                  Compléter les informations SAP
+                </a>
+              </Alert>
+            </div>
           )}
         </Card>
       )}

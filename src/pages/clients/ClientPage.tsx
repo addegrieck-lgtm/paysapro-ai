@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
-import { Mail, MapPin, Pencil, Phone, Plus } from 'lucide-react';
+import { FileText, Mail, MapPin, Pencil, Phone, Plus } from 'lucide-react';
 import { useAppState } from '../../lib/store';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { Card, CardTitle, Stat } from '../../components/ui/Card';
-import { ButtonLink } from '../../components/ui/Button';
+import { Button, ButtonLink } from '../../components/ui/Button';
+import { SapAttestationDialog } from '../../components/SapAttestationDialog';
 import { ProjectCard } from '../../components/ProjectCard';
 import { NotFoundPage } from '../NotFoundPage';
 import { clientAddress, clientDisplayName } from '../../features/clients/format';
@@ -17,7 +18,8 @@ import { Link } from 'react-router';
 
 export function ClientPage() {
   const { id } = useParams();
-  const { clients, projects, quotes, activity } = useAppState();
+  const { clients, projects, quotes, activity, settings } = useAppState();
+  const [sapOpen, setSapOpen] = useState(false);
   const client = clients.find((c) => c.id === id);
 
   const data = useMemo(() => {
@@ -119,6 +121,17 @@ export function ClientPage() {
           </ul>
         </Card>
       )}
+
+      {settings.company.sap.enabled && (
+        <Card>
+          <CardTitle icon={<FileText className="h-5 w-5" />}>Documents</CardTitle>
+          <Button variant="soft" block onClick={() => setSapOpen(true)}>
+            Attestation fiscale SAP
+          </Button>
+          <p className="mt-2 text-sm text-muted">Attestation annuelle établie à partir des prestations SAP, interventions et paiements enregistrés pour ce client.</p>
+        </Card>
+      )}
+      {sapOpen && <SapAttestationDialog client={client} onClose={() => setSapOpen(false)} />}
 
       {data.history.length > 0 && (
         <Card>

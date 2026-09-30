@@ -1,7 +1,7 @@
 // Génération du PDF du devis dans le navigateur (jsPDF, chargé à la demande) : aucun serveur.
 import type { PublicQuoteView } from '../../features/quotes/publicView';
 import { unitShort } from '../../features/catalog/units';
-import { formatDate, formatLongDate, formatTime } from '../../utils/date';
+import { formatDate, formatLongDate, formatTime, fromInputDate } from '../../utils/date';
 import { formatMoney, formatNumber, formatPercent } from '../../utils/number';
 import { blobToDataUrl } from '../storage/exportFormat';
 
@@ -11,7 +11,7 @@ export interface QuotePdfInput {
   loadPhoto: (id: string) => Promise<Blob | undefined>;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
+export function hexToRgb(hex: string): [number, number, number] {
   const m = /^#([0-9a-f]{6})$/i.exec(hex);
   if (!m) return [31, 92, 68];
   return [0, 2, 4].map((i) => parseInt(m[1]!.slice(i, i + 2), 16)) as [number, number, number];
@@ -31,18 +31,18 @@ export function pdfText(s: string): string {
     .replace(/[^\x20-\x7E\xA0-\xFF€\n]/g, '');
 }
 
-const INK: [number, number, number] = [29, 36, 33];
-const MUTED: [number, number, number] = [91, 102, 96];
-const SAND: [number, number, number] = [245, 242, 234];
-const LINE: [number, number, number] = [226, 220, 207];
+export const INK: [number, number, number] = [29, 36, 33];
+export const MUTED: [number, number, number] = [91, 102, 96];
+export const SAND: [number, number, number] = [245, 242, 234];
+export const LINE: [number, number, number] = [226, 220, 207];
 
-function imageFormat(dataUrl: string): 'PNG' | 'JPEG' | null {
+export function imageFormat(dataUrl: string): 'PNG' | 'JPEG' | null {
   if (dataUrl.startsWith('data:image/png')) return 'PNG';
   if (dataUrl.startsWith('data:image/jpeg') || dataUrl.startsWith('data:image/jpg')) return 'JPEG';
   return null;
 }
 
-async function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
+export async function imageSize(dataUrl: string): Promise<{ w: number; h: number }> {
   const img = new Image();
   img.src = dataUrl;
   await img.decode();
@@ -202,7 +202,7 @@ export async function generateQuotePdf(input: QuotePdfInput): Promise<Blob> {
   header();
   for (const l of view.lines) {
     font(9.5, 'bold');
-    const label = doc.splitTextToSize(t(l.label), colQty - M - 30) as string[];
+    const label = doc.splitTextToSize(t(l.sap ? l.label + ' (SAP)' : l.label), colQty - M - 30) as string[];
     font(8.5, 'normal', MUTED);
     const desc = l.description ? (doc.splitTextToSize(t(l.description), colQty - M - 30) as string[]) : [];
     const note = l.estimated ? ['Quantité estimée - à confirmer'] : [];
@@ -271,6 +271,29 @@ export async function generateQuotePdf(input: QuotePdfInput): Promise<Blob> {
     ) as string[];
     doc.text(lines.map(t), M, y);
     y += lines.length * 4 + 4;
+  }
+
+  // ───── Informations SAP (mode actif, numéro renseigné et prestations concernées uniquement) ─────
+  if (view.sap) {
+    const declared = fromInputDate(view.sap.declarationDate);
+    const sapText = [
+      'Déclaration SAP n° ' + view.sap.number + (declared ? ' enregistrée le ' + formatDate(declared) : '') + (view.sap.activity ? ' - ' + view.sap.activity : ''),
+      'Prestations concernées (marquées SAP) : ' + formatMoney(view.sap.totalHT) + ' HT, soit ' + formatMoney(view.sap.totalTTC) + ' TTC.',
+      view.sap.notes,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    ensure(14);
+    font(8, 'bold', GREEN);
+    doc.text('INFORMATIONS SAP - SERVICES À LA PERSONNE', M, y);
+    y += 4.5;
+    font(8.5, 'normal', MUTED);
+    for (const l of doc.splitTextToSize(t(sapText), W - 2 * M) as string[]) {
+      ensure(4.2);
+      doc.text(l, M, y);
+      y += 4.1;
+    }
+    y += 4;
   }
 
   // ───── Conditions ─────
