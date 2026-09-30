@@ -9,11 +9,13 @@
 //   RESEND_API_KEY   clé d'API Resend
 //   EMAIL_FROM       expéditeur vérifié, ex. « Paysapro AI <devis@paysapro-ai.fr> »
 //   APP_URL          https://app.paysapro-ai.fr
-// Limite : 100 e-mails par entreprise et par jour (table usage_tracking).
+// Limite : 30 e-mails par entreprise et par jour par défaut (EMAIL_DAILY_LIMIT, table usage_tracking).
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const APP_URL = (Deno.env.get('APP_URL') ?? '').replace(/\/+$/, '');
-const DAILY_LIMIT = 100;
+// Envois par entreprise et par jour. 30 par défaut : l'offre gratuite de Resend est limitée à 100 par jour
+// pour tout le compte. Modifiable sans redéployer avec le secret EMAIL_DAILY_LIMIT.
+const DAILY_LIMIT = Math.max(1, Number(Deno.env.get('EMAIL_DAILY_LIMIT')) || 30);
 
 const cors = {
   'Access-Control-Allow-Origin': APP_URL || 'null',

@@ -4,7 +4,7 @@
 
 Deux e-mails sont prévus : le lien du devis envoyé au client, et l'invitation d'un collègue.
 Le texte et le destinataire sont déterminés par le serveur à partir de la base, jamais par le navigateur.
-Limite : 100 envois par entreprise et par jour.
+Limite : 30 envois par entreprise et par jour (secret `EMAIL_DAILY_LIMIT` pour la changer). L’offre gratuite de Resend autorise 100 envois par jour et 3 000 par mois pour tout le compte.
 
 ## 1. Resend
 
