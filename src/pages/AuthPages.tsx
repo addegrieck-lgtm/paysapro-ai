@@ -118,6 +118,17 @@ export function SignupPage() {
           </p>
         </div>
         <p className="mt-3 text-sm text-muted">Rien reçu ? Regardez dans les courriers indésirables.</p>
+        <p className="mt-2 text-sm text-muted">
+          Cette adresse a peut-être déjà un compte : dans ce cas, aucun e-mail n’est envoyé.{' '}
+          <Link to="/login" className="font-semibold text-brand underline">
+            Connectez-vous
+          </Link>{' '}
+          ou utilisez{' '}
+          <Link to="/forgot-password" className="font-semibold text-brand underline">
+            Mot de passe oublié
+          </Link>
+          .
+        </p>
         <Link to="/login" className={`mt-4 inline-block ${linkClass}`}>
           Aller à la connexion
         </Link>
