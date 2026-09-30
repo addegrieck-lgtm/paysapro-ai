@@ -5,10 +5,11 @@
 import { APP_CONFIG } from '../../config/app';
 import type { BillingInterval } from './plans';
 import { CLOUD_ENABLED, supabase } from '../../services/cloud/client';
+import { isDemoSpace } from '../../services/storage';
 
 /** Activé seulement hors bêta, en mode cloud, quand VITE_STRIPE_ENABLED vaut « true ». */
 export function billingEnabled(): boolean {
-  return CLOUD_ENABLED && !APP_CONFIG.betaMode && import.meta.env?.VITE_STRIPE_ENABLED === 'true';
+  return CLOUD_ENABLED && !isDemoSpace() && !APP_CONFIG.betaMode && import.meta.env?.VITE_STRIPE_ENABLED === 'true';
 }
 
 async function redirect(fn: 'stripe-checkout' | 'stripe-portal', body: Record<string, string>): Promise<void> {

@@ -43,8 +43,9 @@ function FeatureList({ plan }: { plan: Plan }) {
 
 /** Paramètres → Abonnement : plan actuel, prix, fonctionnalités, statut, limites. */
 export function SubscriptionPage() {
-  const { subscription } = useAppState();
-  const beta = APP_CONFIG.betaMode;
+  const { subscription, demo } = useAppState();
+  // La démonstration se comporte comme la bêta : tout est ouvert, aucun paiement.
+  const beta = APP_CONFIG.betaMode || demo;
   const plan = planFor(beta, subscription);
   const status = beta ? 'beta' : (subscription?.status ?? 'inactive');
   const toast = useToast();

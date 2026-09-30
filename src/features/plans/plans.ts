@@ -123,6 +123,8 @@ export function planFor(betaMode: boolean, subscription: SubscriptionInfo | null
 }
 
 export function getCurrentPlan(): Plan {
+  // L'espace de démonstration montre toujours le produit complet, quel que soit l'abonnement.
+  if (getState().demo) return PLANS.BETA;
   return planFor(APP_CONFIG.betaMode, getState().subscription);
 }
 
