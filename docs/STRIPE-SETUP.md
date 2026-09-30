@@ -1,6 +1,6 @@
 # Abonnements Stripe — mise en route
 
-> Statut : **préparé, jamais exécuté**. Le code des fonctions serveur est écrit et la vérification
+> Statut : **installé et essayé en mode test** le 30/09/2026 (paiement Pro mensuel, webhook, portail client).
 > de signature est testée, mais rien n'a tourné contre un vrai compte Stripe.
 > Tant que `VITE_BETA_MODE=true`, aucun paiement n'est proposé : Premium Max est offert.
 

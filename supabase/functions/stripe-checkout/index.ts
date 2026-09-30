@@ -1,6 +1,6 @@
 // Crée une session de paiement Stripe (abonnement) pour l'entreprise de l'administrateur connecté.
 // Appelée par l'application : supabase.functions.invoke('stripe-checkout', { body: { plan } }).
-import { originOf, cors, customerFor, json, PRICE_IDS, requireAdmin, stripe, YEARLY_PRICE_IDS } from '../_shared/stripe.ts';
+import { adminClient, originOf, cors, customerFor, json, PRICE_IDS, requireAdmin, stripe, YEARLY_PRICE_IDS } from '../_shared/stripe.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors(req) });
@@ -12,6 +12,10 @@ Deno.serve(async (req) => {
     // Le navigateur choisit l'offre et la périodicité ; le prix, lui, vient toujours des tarifs Stripe configurés ici.
     const price = plan ? (interval === 'year' ? YEARLY_PRICE_IDS : PRICE_IDS)[plan] : undefined;
     if (!price) return json({ error: 'unknown_plan' }, 400, req);
+
+    // Une entreprise déjà abonnée change d'offre par le portail : jamais un second abonnement en parallèle.
+    const current = await adminClient().from('subscriptions').select('status').eq('company_id', admin.companyId).maybeSingle();
+    if (['active', 'trialing', 'past_due'].includes((current.data?.status as string | undefined) ?? '')) return json({ error: 'already_subscribed' }, 409, req);
 
     const customer = await customerFor(admin.companyId, admin.email);
     const session = await stripe('checkout/sessions', {

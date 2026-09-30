@@ -115,6 +115,10 @@ Deno.serve(async (req) => {
     const price = plan ? (interval === 'year' ? YEARLY_PRICE_IDS : PRICE_IDS)[plan] : undefined;
     if (!price) return json({ error: 'unknown_plan' }, 400, req);
 
+    // Une entreprise déjà abonnée change d'offre par le portail : jamais un second abonnement en parallèle.
+    const current = await adminClient().from('subscriptions').select('status').eq('company_id', admin.companyId).maybeSingle();
+    if (['active', 'trialing', 'past_due'].includes((current.data?.status as string | undefined) ?? '')) return json({ error: 'already_subscribed' }, 409, req);
+
     const customer = await customerFor(admin.companyId, admin.email);
     const session = await stripe('checkout/sessions', {
       mode: 'subscription',

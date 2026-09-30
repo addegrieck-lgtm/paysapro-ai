@@ -52,6 +52,8 @@ export function SubscriptionPage() {
   const [busy, setBusy] = useState(false);
   const [interval, setBillingInterval] = useState<BillingInterval>('year');
   const billing = billingEnabled();
+  // Déjà abonné : le changement d'offre passe par le portail Stripe (pas de second abonnement).
+  const subscribed = !beta && plan.features.length > 0;
   // Retour de Stripe : l'abonnement est écrit par le webhook, parfois quelques secondes après la redirection.
   const paid = useLocation().search.includes('paiement=ok');
   useEffect(() => {
@@ -132,7 +134,7 @@ export function SubscriptionPage() {
                 {p.features.length} fonctionnalités · {p.limits.users} utilisateur{p.limits.users > 1 ? 's' : ''}
               </div>
               {billing && !(p.id === plan.id && plan.features.length > 0) && (
-                <Button size="sm" className="mt-3" disabled={busy} onClick={() => pay(() => startCheckout(p.id.toLowerCase() as 'starter' | 'pro' | 'business', interval))}>
+                <Button size="sm" className="mt-3" disabled={busy} onClick={() => pay(() => (subscribed ? openBillingPortal() : startCheckout(p.id.toLowerCase() as 'starter' | 'pro' | 'business', interval)))}>
                   Choisir {p.name}
                 </Button>
               )}
