@@ -6,6 +6,9 @@ import { Button } from '../../components/ui/Button';
 import { FEATURES, PAID_PLANS, planFor, priceLabel, type Plan } from '../../features/plans/plans';
 import { APP_CONFIG } from '../../config/app';
 import { formatDate } from '../../utils/date';
+import { useState } from 'react';
+import { useToast } from '../../components/ui/Feedback';
+import { billingEnabled, openBillingPortal, startCheckout } from '../../features/plans/billing';
 
 const STATUS_LABEL: Record<string, string> = {
   beta: 'Bêta',
@@ -42,6 +45,18 @@ export function SubscriptionPage() {
   const beta = APP_CONFIG.betaMode;
   const plan = planFor(beta, subscription);
   const status = beta ? 'beta' : (subscription?.status ?? 'inactive');
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const billing = billingEnabled();
+  const pay = async (task: () => Promise<void>) => {
+    setBusy(true);
+    try {
+      await task();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Le paiement n’a pas pu être ouvert.', 'danger');
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -68,7 +83,7 @@ export function SubscriptionPage() {
         <dl className="space-y-1.5 text-sm">
           <div className="flex justify-between gap-4">
             <dt className="text-muted">Utilisateurs inclus</dt>
-            <dd className="font-medium">{plan.limits.users} — gestion d’équipe à venir</dd>
+            <dd className="font-medium">{plan.limits.users}</dd>
           </div>
           <div className="flex justify-between gap-4">
             <dt className="text-muted">IA avancée</dt>
@@ -88,21 +103,28 @@ export function SubscriptionPage() {
               <div className="mt-1 text-sm text-muted">
                 {p.features.length} fonctionnalités · {p.limits.users} utilisateur{p.limits.users > 1 ? 's' : ''}
               </div>
+              {billing && !(p.id === plan.id && plan.features.length > 0) && (
+                <Button size="sm" className="mt-3" disabled={busy} onClick={() => pay(() => startCheckout(p.id.toLowerCase() as 'starter' | 'pro' | 'business'))}>
+                  Choisir {p.name}
+                </Button>
+              )}
             </div>
           ))}
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="secondary" disabled>
+          <Button variant="secondary" disabled={!billing || busy || plan.features.length === 0} onClick={() => pay(openBillingPortal)}>
             Changer de plan
           </Button>
-          <Button variant="secondary" disabled>
+          <Button variant="secondary" disabled={!billing || busy || plan.features.length === 0} onClick={() => pay(openBillingPortal)}>
             Gérer l’abonnement
           </Button>
         </div>
         <p className="mt-2 text-sm text-muted">
           {beta
             ? 'Le paiement n’est pas activé pendant la bêta. Vous serez prévenu à l’avance, et rien ne sera facturé sans votre accord.'
-            : 'Le paiement en ligne n’est pas encore activé : disponible prochainement.'}
+            : billing
+              ? 'Paiement sécurisé par Stripe. Moyen de paiement, factures et résiliation se gèrent depuis « Gérer l’abonnement ».'
+              : 'Le paiement en ligne n’est pas encore activé : disponible prochainement.'}
         </p>
       </Card>
     </div>

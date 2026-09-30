@@ -62,6 +62,7 @@ const AISettingsPage = lazy(() => import('./pages/settings/AISettingsPage').then
 const AppearancePage = lazy(() => import('./pages/settings/AppearancePage').then((m) => ({ default: m.AppearancePage })));
 const BetaProgramPage = lazy(() => import('./pages/settings/BetaProgramPage').then((m) => ({ default: m.BetaProgramPage })));
 const SubscriptionPage = lazy(() => import('./pages/settings/SubscriptionPage').then((m) => ({ default: m.SubscriptionPage })));
+const TeamPage = lazy(() => import('./pages/settings/TeamPage').then((m) => ({ default: m.TeamPage })));
 const AboutPage = lazy(() => import('./pages/settings/AboutPage').then((m) => ({ default: m.AboutPage })));
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -220,6 +221,7 @@ function AppRoutes() {
         <Route path="settings/appearance" element={<AppearancePage />} />
         <Route path="settings/beta" element={<BetaProgramPage />} />
         <Route path="settings/subscription" element={<SubscriptionPage />} />
+        <Route path="settings/team" element={<RequireFeature feature="team"><TeamPage /></RequireFeature>} />
         <Route path="about" element={<AboutPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

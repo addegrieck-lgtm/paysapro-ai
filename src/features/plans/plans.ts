@@ -47,7 +47,7 @@ export const FEATURES: Record<Feature, { label: string; status: 'available' | 'p
   statistics: { label: 'Statistiques', status: 'available' },
   sap: { label: 'Mode SAP (services à la personne)', status: 'available' },
   profitability: { label: 'Marge et rentabilité des devis', status: 'available' },
-  team: { label: 'Équipe : plusieurs utilisateurs et rôles', status: 'planned' },
+  team: { label: 'Équipe : plusieurs utilisateurs et rôles', status: 'available' },
   ai_advanced: { label: 'IA avancée (analyse par un modèle distant)', status: 'planned' },
   online_payment: { label: 'Paiement en ligne de l’acompte', status: 'planned' },
 };
@@ -60,7 +60,7 @@ export interface Plan {
   paymentRequired: boolean;
   features: Feature[];
   limits: {
-    /** Utilisateurs inclus (appliqué quand la gestion d'équipe sera disponible) */
+    /** Utilisateurs inclus. La limite réelle est appliquée par la base : company_user_limit() (migration 0004) */
     users: number;
     /** Requêtes d'IA distante par mois (appliqué côté serveur quand l'IA distante sera disponible) */
     aiRequestsPerMonth: number;

@@ -54,8 +54,14 @@ export async function refreshCloudSession(): Promise<CloudSession | null> {
   if (error) throw new Error(error.message);
   const user = data.session?.user;
   if (!user) return (session = null);
-  const member = await supabase.from('company_members').select('company_id, role').eq('user_id', user.id).order('created_at').limit(1).maybeSingle();
+  const findMember = () => supabase!.from('company_members').select('company_id, role').eq('user_id', user.id).order('created_at').limit(1).maybeSingle();
+  let member = await findMember();
   if (member.error) throw new Error(member.error.message);
+  if (!member.data) {
+    // Sans entreprise : rejoint celle qui a invité cette adresse e-mail, s'il y en a une.
+    const joined = await supabase.rpc('accept_pending_invitation');
+    if (!joined.error && joined.data) member = await findMember();
+  }
   session = {
     userId: user.id,
     email: user.email ?? '',

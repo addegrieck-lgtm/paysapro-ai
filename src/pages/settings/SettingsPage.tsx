@@ -1,9 +1,10 @@
-import { Bell, BookOpen, CreditCard, Building2, Database, FileText, Info, LifeBuoy, Palette, Rocket, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+import { Bell, BookOpen, CreditCard, Building2, Database, FileText, Info, LifeBuoy, Palette, Rocket, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { ListLink } from '../../components/ui/Card';
 
 export const SETTINGS_ITEMS = [
   { to: '/settings/account', icon: UserRound, label: 'Compte', hint: 'Profil, connexion' },
+  { to: '/settings/team', icon: Users, label: 'Équipe', hint: 'Membres, rôles, invitations' },
   { to: '/settings/subscription', icon: CreditCard, label: 'Abonnement', hint: 'Plan, prix, fonctionnalités' },
   { to: '/company', icon: Building2, label: 'Entreprise', hint: 'Logo, coordonnées, couleurs des devis, SAP' },
   { to: '/settings/quotes', icon: FileText, label: 'Devis', hint: 'TVA, acompte, validité, numérotation' },

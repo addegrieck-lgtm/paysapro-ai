@@ -15,12 +15,15 @@ import { formatDate } from '../../utils/date';
 import { useNavigate } from 'react-router';
 import { CLOUD_ENABLED } from '../../services/cloud/client';
 import { signOut } from '../../features/auth/actions';
+import { deleteMyAccount } from '../../features/team/actions';
+import { ConfirmDialog } from '../../components/ui/Feedback';
 
 export function AccountPage() {
   const { user, settings } = useAppState();
   const toast = useToast();
   const navigate = useNavigate();
   const cloud = CLOUD_ENABLED && user?.provider === 'cloud';
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const plan = getCurrentPlan();
   const [firstName, setFirstName] = useState(user?.firstName ?? settings.owner.firstName);
   const [lastName, setLastName] = useState(user?.lastName ?? settings.owner.lastName);
@@ -77,6 +80,36 @@ export function AccountPage() {
           </div>
         </Card>
       )}
+      {cloud && (
+        <Card>
+          <CardTitle icon={<ShieldCheck className="h-5 w-5" />}>Supprimer mon compte</CardTitle>
+          <p className="text-sm text-muted">
+            Votre compte est supprimé définitivement. Si vous êtes le seul utilisateur de votre entreprise, toutes ses données (clients, chantiers, devis, photos) le sont aussi. Téléchargez d’abord une
+            sauvegarde dans Paramètres → Données si besoin.
+          </p>
+          <Button className="mt-3" variant="danger" onClick={() => setConfirmDelete(true)}>
+            Supprimer mon compte
+          </Button>
+        </Card>
+      )}
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Supprimer définitivement votre compte ?"
+        message={<p className="font-semibold text-danger">Cette action est irréversible.</p>}
+        confirmLabel="Supprimer mon compte"
+        requireText="SUPPRIMER"
+        danger
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={async () => {
+          setConfirmDelete(false);
+          try {
+            await deleteMyAccount();
+            navigate('/', { replace: true });
+          } catch (e) {
+            toast(e instanceof Error ? e.message : 'La suppression a échoué. Réessayez.', 'danger');
+          }
+        }}
+      />
       <Card className={cloud ? 'hidden' : ''}>
         <CardTitle icon={<Cloud className="h-5 w-5" />}>Connexion et synchronisation</CardTitle>
         <p className="text-muted">
