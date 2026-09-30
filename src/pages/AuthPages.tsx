@@ -202,7 +202,7 @@ export function ForgotPasswordPage() {
       }
     >
       {sent ? (
-        <p>Si un compte existe avec cette adresse, un e-mail contenant un lien de réinitialisation vient d’être envoyé. Ouvrez-le sur cet appareil.</p>
+        <p>Si un compte existe avec cette adresse, un e-mail contenant un lien de réinitialisation vient d’être envoyé. Le lien est valable une heure. Pensez à regarder dans les courriers indésirables.</p>
       ) : (
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <TextField label="E-mail" type="email" value={email} onChange={setEmail} autoComplete="email" inputMode="email" required />
@@ -229,7 +229,24 @@ export function ResetPasswordPage() {
     setDone(true);
   });
   if (!CLOUD_ENABLED) return <Navigate to="/onboarding" replace />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) {
+    // Lien expiré, déjà utilisé, ou ouvert sans session : on l'explique au lieu de renvoyer à la connexion.
+    return (
+      <Shell
+        title="Lien expiré ou invalide"
+        footer={
+          <Link to="/login" className={linkClass}>
+            Retour à la connexion
+          </Link>
+        }
+      >
+        <p>Ce lien de réinitialisation n’est plus valable : il a peut-être déjà servi ou a expiré (il est valable une heure).</p>
+        <Button className="mt-4" block onClick={() => navigate('/forgot-password')}>
+          Recevoir un nouveau lien
+        </Button>
+      </Shell>
+    );
+  }
   return (
     <Shell title="Nouveau mot de passe">
       {done ? (

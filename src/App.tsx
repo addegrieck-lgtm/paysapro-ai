@@ -14,7 +14,7 @@ import { APP_CONFIG } from './config/app';
 import { openDemo } from './features/settings/dataActions';
 import { isDemoSpace } from './services/storage';
 import { CLOUD_ENABLED } from './services/cloud/client';
-import { watchAuth } from './features/auth/actions';
+import { handleAuthLink, watchAuth } from './features/auth/actions';
 import { initMonitoring } from './services/monitoring';
 import { PERMISSION_MESSAGE, useCan, type Permission } from './features/team/permissions';
 const LoginPage = lazy(() => import('./pages/AuthPages').then((m) => ({ default: m.LoginPage })));
@@ -270,6 +270,10 @@ function ScrollToTop() {
 export default function App() {
   useEffect(() => {
     const start = async () => {
+      // Lien reçu par e-mail : traité avant le chargement pour ouvrir le bon écran.
+      const link = CLOUD_ENABLED ? await handleAuthLink().catch(() => 'invalid' as const) : 'none';
+      if (link === 'recovery') window.location.hash = '#/reset-password';
+      else if (link === 'invalid') window.location.hash = '#/reset-password?lien=invalide';
       if (APP_CONFIG.demoMode && !isDemoSpace()) await openDemo();
       else await loadAll();
       analytics.track('app_opened');

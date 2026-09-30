@@ -77,7 +77,8 @@ export async function signOut(): Promise<void> {
 /** Envoie l'e-mail de réinitialisation. Ne révèle jamais si l'adresse possède un compte. */
 export async function requestPasswordReset(email: string): Promise<void> {
   if (!email.trim() || !isValidEmail(email)) throw new AuthFormError('Adresse e-mail invalide.');
-  const { error } = await client().auth.resetPasswordForEmail(email.trim(), { redirectTo: authRedirectUrl() });
+  // « ?reset=1 » : au retour, l'application ouvre l'écran « Nouveau mot de passe » quoi qu'il arrive.
+  const { error } = await client().auth.resetPasswordForEmail(email.trim(), { redirectTo: `${authRedirectUrl()}?reset=1` });
   if (error && (error.status === 429 || (error.code ?? '').startsWith('over_'))) throw new AuthFormError(authMessage(error));
   if (error) console.error(error.message);
 }
@@ -87,6 +88,40 @@ export async function updatePassword(password: string): Promise<void> {
   if (password.length > 72) throw new AuthFormError('Le mot de passe ne peut pas dépasser 72 caractères.');
   const { error } = await client().auth.updateUser({ password });
   if (error) throw new AuthFormError(authMessage(error));
+}
+
+export type AuthLinkResult = 'none' | 'recovery' | 'confirmed' | 'invalid';
+
+/**
+ * Lien reçu par e-mail (confirmation d'inscription, mot de passe oublié), traité AVANT le chargement.
+ *  • « ?token_hash=…&type=… » : vérifié ici. Fonctionne même si le lien est ouvert dans un autre
+ *    navigateur ou sur un autre appareil que celui de la demande (modèles d'e-mails Supabase adaptés).
+ *  • « ?code=… » (ancien format) : échangé automatiquement par le client Supabase ; « reset=1 » indique
+ *    qu'il s'agit d'un mot de passe oublié.
+ * Les paramètres sont ensuite retirés de l'adresse.
+ */
+export async function handleAuthLink(): Promise<AuthLinkResult> {
+  if (!supabase || typeof window === 'undefined') return 'none';
+  const params = new URLSearchParams(window.location.search);
+  const tokenHash = params.get('token_hash');
+  const type = params.get('type');
+  const reset = params.get('reset') === '1';
+  const hasCode = params.has('code');
+  if (!tokenHash && !reset && !hasCode && !params.has('error_description')) return 'none';
+
+  let result: AuthLinkResult;
+  if (tokenHash && type) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: type as 'recovery' | 'email' | 'signup' | 'invite' | 'magiclink' | 'email_change' });
+    result = error ? 'invalid' : type === 'recovery' ? 'recovery' : 'confirmed';
+  } else if (params.has('error_description')) {
+    result = 'invalid';
+  } else {
+    // Attend la fin de l'échange du code par le client Supabase.
+    const { data } = await supabase.auth.getSession();
+    result = data.session ? (reset ? 'recovery' : 'confirmed') : reset ? 'invalid' : 'none';
+  }
+  window.history.replaceState(null, '', `${window.location.pathname}${window.location.hash}`);
+  return result;
 }
 
 /**
