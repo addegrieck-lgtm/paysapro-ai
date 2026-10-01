@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from 'react';
 import type { ActivityEvent, AppSettings, CatalogItem, Client, PhotoMeta, Project, Quote, QuoteTemplate, SubscriptionInfo, User } from '../types';
 import { isDemoSpace, storage } from '../services/storage';
+import { shrinkLogoIfNeeded } from '../services/images/logo';
 import { CLOUD_ENABLED, fetchSubscription, getCloudSession, refreshCloudSession, type MemberRole } from '../services/cloud/client';
 import { builtInTemplates, defaultCatalog, defaultSettings } from '../data/defaults';
 import { migrateCatalogItem, migrateProject, migrateQuote, migrateSettings, needsMigration } from '../features/migrations';
@@ -150,6 +151,11 @@ export async function loadAll(): Promise<void> {
     const quotes = rawQuotes.map(migrateQuote);
     if (migrate) {
       await Promise.all([...projects.map((p) => storage.saveProject(p)), ...quotes.map((q) => storage.saveQuote(q))]);
+    }
+    const smaller = await shrinkLogoIfNeeded(settings.company.logoDataUrl);
+    if (smaller) {
+      settings.company = { ...settings.company, logoDataUrl: smaller };
+      await storage.saveSettings(settings).catch(() => undefined);
     }
     const subscription = cloud ? ((await fetchSubscription()) as SubscriptionInfo | null) : null;
     const role = cloud ? (getCloudSession()?.role ?? null) : null;

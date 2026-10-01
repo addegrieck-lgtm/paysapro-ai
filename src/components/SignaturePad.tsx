@@ -3,6 +3,17 @@ import { RotateCcw } from 'lucide-react';
 import { Button } from './ui/Button';
 
 /** Zone de signature au doigt / stylet / souris. Renvoie une image PNG (data URL) ou null. */
+/** Image de la signature, réduite à 600 px de large au plus : quelques Ko au lieu de ~80 Ko. */
+function exportSignature(source: HTMLCanvasElement): string {
+  const scale = Math.min(1, 600 / source.width);
+  if (scale === 1) return source.toDataURL('image/png');
+  const out = document.createElement('canvas');
+  out.width = Math.round(source.width * scale);
+  out.height = Math.round(source.height * scale);
+  out.getContext('2d')?.drawImage(source, 0, 0, out.width, out.height);
+  return out.toDataURL('image/png');
+}
+
 export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -68,7 +79,7 @@ export function SignaturePad({ onChange }: { onChange: (dataUrl: string | null) 
     drawing.current = false;
     last.current = null;
     setEmpty(false);
-    onChange(canvasRef.current?.toDataURL('image/png') ?? null);
+    onChange(canvasRef.current ? exportSignature(canvasRef.current) : null);
   };
 
   const clear = () => {

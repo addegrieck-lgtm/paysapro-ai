@@ -153,7 +153,7 @@ function AppRoutes() {
     if (!CLOUD_ENABLED) return;
     let last = Date.now();
     const refresh = () => {
-      if (document.visibilityState !== 'visible' || isDemoSpace() || Date.now() - last < 30_000) return;
+      if (document.visibilityState !== 'visible' || isDemoSpace() || Date.now() - last < 5 * 60_000) return;
       last = Date.now();
       void loadAll();
     };
